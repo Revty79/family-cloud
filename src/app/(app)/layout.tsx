@@ -10,7 +10,7 @@ export default async function AppLayout({
 
   return (
     <main className="min-h-screen">
-      <header className="border-b border-[#d9ccb9] bg-[#fff8ee]">
+      <header className="border-b border-[#d9ccb999] bg-[#fff8ee80] backdrop-blur-sm">
         <div className="fc-container flex flex-wrap items-center justify-between gap-4 py-4">
           <div className="flex items-center gap-4">
             <SiteLogo subtitle={false} />

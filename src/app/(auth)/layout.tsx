@@ -10,7 +10,7 @@ export default async function AuthLayout({
 
   return (
     <main className="flex min-h-[calc(100vh-5rem)]">
-      <section className="hidden w-[45%] border-r border-[#d4c6b4] bg-gradient-to-br from-[#f7e8d1] via-[#f2e5d8] to-[#dfe8e5] lg:block">
+      <section className="hidden w-[45%] border-r border-[#d4c6b480] bg-gradient-to-br from-[#f7e8d16e] via-[#f2e5d85a] to-[#dfe8e56e] backdrop-blur-[1px] lg:block">
         <div className="flex h-full flex-col justify-between p-10">
           <SiteLogo href="/" subtitle />
           <div className="max-w-sm">

@@ -8,7 +8,7 @@ export default function PublicLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-[#d8cab6cc] bg-[#fff7ebcc] backdrop-blur-md">
+      <header className="sticky top-0 z-20 border-b border-[#d8cab699] bg-[#fff7eb80] backdrop-blur-sm">
         <div className="fc-container flex h-20 items-center justify-between">
           <SiteLogo subtitle />
           <div className="flex items-center gap-3">
