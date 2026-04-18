@@ -44,7 +44,14 @@ export default async function CalendarPage() {
           Dashboard
         </Link>
         <span>/</span>
-        <span>Calendar</span>
+        <Link
+          href="/calendars"
+          className="rounded-full border border-[#d2c2ac] bg-[#f4e9d7] px-2.5 py-1 transition hover:border-[#bfab8f] hover:text-[#31433a]"
+        >
+          Calendars
+        </Link>
+        <span>/</span>
+        <span>Family</span>
       </div>
 
       <FamilyCalendar initialCustomEvents={initialCustomEvents} />

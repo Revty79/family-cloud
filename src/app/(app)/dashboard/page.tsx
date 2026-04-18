@@ -3,12 +3,12 @@ import Link from "next/link";
 
 const cards = [
   {
-    title: "Family calendar",
+    title: "Calendars",
     detail:
-      "Manage routines, appointments, and reminders in a shared monthly view.",
+      "Choose between family, chore, and personal calendar spaces.",
     icon: CalendarDays,
-    href: "/calendar",
-    cta: "Open calendar",
+    href: "/calendars",
+    cta: "Open calendars",
   },
   {
     title: "Family files",
