@@ -15,7 +15,7 @@ export default async function AppLayout({
           <div className="flex items-center gap-4">
             <SiteLogo subtitle={false} />
             <span className="hidden rounded-full border border-[#d2c2ac] bg-[#f4e9d7] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.13em] text-[#4b5a53] sm:inline-flex">
-              Dashboard
+              Family Hub
             </span>
           </div>
           <div className="flex items-center gap-3">

@@ -8,6 +8,13 @@
       "when": 1776483546634,
       "tag": "0000_black_jocasta",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776529989116,
+      "tag": "0001_cooing_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

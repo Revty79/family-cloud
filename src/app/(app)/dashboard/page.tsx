@@ -1,23 +1,30 @@
 import { CalendarDays, Lock, Sparkles, UploadCloud } from "lucide-react";
+import Link from "next/link";
 
 const cards = [
+  {
+    title: "Family calendar",
+    detail:
+      "Manage routines, appointments, and reminders in a shared monthly view.",
+    icon: CalendarDays,
+    href: "/calendar",
+    cta: "Open calendar",
+  },
   {
     title: "Family files",
     detail:
       "Shared folders, handbooks, and records will live here in upcoming phases.",
     icon: UploadCloud,
-  },
-  {
-    title: "Plans and schedules",
-    detail:
-      "A calm timeline for routines, events, and reminders is coming next.",
-    icon: CalendarDays,
+    href: null,
+    cta: "Coming soon",
   },
   {
     title: "Privacy controls",
     detail:
       "Role and access settings will expand as multi-member features are added.",
     icon: Lock,
+    href: null,
+    cta: "Coming soon",
   },
 ];
 
@@ -48,6 +55,18 @@ export default function DashboardPage() {
               {card.title}
             </h2>
             <p className="mt-3 text-sm leading-7 fc-text-muted">{card.detail}</p>
+            {card.href ? (
+              <Link
+                href={card.href}
+                className="mt-4 inline-flex rounded-full border border-[#cbbba4] bg-[#f7eddd] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#42534b] transition hover:border-[#b8a183] hover:text-[#2b3b34]"
+              >
+                {card.cta}
+              </Link>
+            ) : (
+              <span className="mt-4 inline-flex rounded-full border border-[#d2c3ad] bg-[#f5ebdc] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-[#6f6d66]">
+                {card.cta}
+              </span>
+            )}
           </article>
         ))}
       </div>
