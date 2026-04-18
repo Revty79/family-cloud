@@ -13,10 +13,10 @@ const cards = [
   {
     title: "Family files",
     detail:
-      "Shared folders, handbooks, and records will live here in upcoming phases.",
+      "Keep shared documents, photos, and household records in one place.",
     icon: UploadCloud,
-    href: null,
-    cta: "Coming soon",
+    href: "/files",
+    cta: "Open files",
   },
   {
     title: "Privacy controls",
