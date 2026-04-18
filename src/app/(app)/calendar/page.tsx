@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { FamilyCalendar } from "@/components/dashboard/family-calendar";
 import { db } from "@/db";
 import { calendarEvent } from "@/db/schema";
@@ -7,7 +7,7 @@ import type { CalendarCustomEvent } from "@/lib/calendar";
 import { requireSession } from "@/lib/auth-session";
 
 export default async function CalendarPage() {
-  const session = await requireSession("/login?next=/calendar");
+  await requireSession("/login?next=/calendar");
 
   const customEventRows = await db
     .select({
@@ -18,7 +18,6 @@ export default async function CalendarPage() {
       time: calendarEvent.time,
     })
     .from(calendarEvent)
-    .where(eq(calendarEvent.userId, session.user.id))
     .orderBy(
       asc(calendarEvent.date),
       asc(calendarEvent.time),

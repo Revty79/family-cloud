@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { calendarEvent } from "@/db/schema";
@@ -21,12 +21,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   const [deleted] = await db
     .delete(calendarEvent)
-    .where(
-      and(
-        eq(calendarEvent.id, eventId),
-        eq(calendarEvent.userId, session.user.id),
-      ),
-    )
+    .where(eq(calendarEvent.id, eventId))
     .returning({ id: calendarEvent.id });
 
   if (!deleted) {

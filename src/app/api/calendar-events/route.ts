@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { calendarEvent } from "@/db/schema";
@@ -38,7 +38,6 @@ export async function GET() {
   const rows = await db
     .select()
     .from(calendarEvent)
-    .where(eq(calendarEvent.userId, session.user.id))
     .orderBy(
       asc(calendarEvent.date),
       asc(calendarEvent.time),

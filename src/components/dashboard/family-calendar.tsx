@@ -461,8 +461,8 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
             Family calendar
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-7 fc-text-muted">
-            Add and remove your own events anytime. U.S. federal holidays are
-            preloaded.
+            Add and remove shared family events anytime. U.S. federal holidays
+            are preloaded.
           </p>
         </div>
 
