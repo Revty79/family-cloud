@@ -1,0 +1,56 @@
+import { CalendarDays, Lock, Sparkles, UploadCloud } from "lucide-react";
+
+const cards = [
+  {
+    title: "Family files",
+    detail:
+      "Shared folders, handbooks, and records will live here in upcoming phases.",
+    icon: UploadCloud,
+  },
+  {
+    title: "Plans and schedules",
+    detail:
+      "A calm timeline for routines, events, and reminders is coming next.",
+    icon: CalendarDays,
+  },
+  {
+    title: "Privacy controls",
+    detail:
+      "Role and access settings will expand as multi-member features are added.",
+    icon: Lock,
+  },
+];
+
+export default function DashboardPage() {
+  return (
+    <section className="space-y-6">
+      <div className="rounded-2xl border border-[#d7c8b2] bg-gradient-to-r from-[#f9ecda] to-[#dce8e5] p-7 sm:p-8">
+        <p className="inline-flex items-center gap-2 rounded-full border border-[#ccbba2] bg-[#fff4e4] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[#54665d]">
+          <Sparkles className="h-3.5 w-3.5 text-accent-strong" />
+          Dashboard
+        </p>
+        <h1 className="mt-4 font-display text-4xl tracking-tight text-[#21322c]">
+          You&apos;re signed in
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-[#3f5048]">
+          This is your protected area. Family features can be added here next.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {cards.map((card) => (
+          <article
+            key={card.title}
+            className="fc-card rounded-xl border border-[#d6c8b2] p-5"
+          >
+            <card.icon className="h-6 w-6 text-sage" />
+            <h2 className="mt-4 font-display text-2xl tracking-tight text-[#23362f]">
+              {card.title}
+            </h2>
+            <p className="mt-3 text-sm leading-7 fc-text-muted">{card.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
