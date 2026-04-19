@@ -35,6 +35,19 @@ function toFamilyFileItem(row: typeof familyFile.$inferSelect): FamilyFileItem {
   };
 }
 
+function getUploadFailureMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "EACCES" || error.code === "EPERM")
+  ) {
+    return "Upload storage is unavailable on the server right now.";
+  }
+
+  return "Could not upload this file right now. Please try again in a moment.";
+}
+
 export async function GET() {
   const session = await getSession();
   if (!session) {
@@ -167,8 +180,7 @@ export async function POST(request: Request) {
     console.error("Family file upload failed.", error);
     return NextResponse.json(
       {
-        error:
-          "Could not upload this file right now. Please try again in a moment.",
+        error: getUploadFailureMessage(error),
       },
       { status: 500 },
     );

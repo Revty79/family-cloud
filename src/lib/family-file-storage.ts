@@ -1,12 +1,26 @@
 import path from "node:path";
 
-const privateStorageDirectoryParts = ["storage", "family-files"] as const;
+function getFamilyCloudStorageRootDirectory() {
+  const configuredRoot = process.env.FAMILY_CLOUD_STORAGE_DIR?.trim();
+  if (!configuredRoot) {
+    return path.join(
+      /* turbopackIgnore: true */ process.cwd(),
+      "storage",
+    );
+  }
 
-export function getFamilyFilesUploadDirectory() {
+  if (path.isAbsolute(configuredRoot)) {
+    return configuredRoot;
+  }
+
   return path.join(
     /* turbopackIgnore: true */ process.cwd(),
-    ...privateStorageDirectoryParts,
+    configuredRoot,
   );
+}
+
+export function getFamilyFilesUploadDirectory() {
+  return path.join(getFamilyCloudStorageRootDirectory(), "family-files");
 }
 
 export function getFamilyFileDownloadUrl(fileId: string) {

@@ -277,6 +277,10 @@ export function FamilyFilesHub({
   };
 
   const handleRemoveFile = async (fileId: string) => {
+    if (!window.confirm("Remove this file from family files?")) {
+      return;
+    }
+
     setFileError(null);
     setPendingFileDeleteId(fileId);
 
@@ -614,7 +618,7 @@ export function FamilyFilesHub({
                         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6a706a]">
                           {formatFileSize(file.sizeBytes)} - {formattedDate}
                         </p>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <a
                             href={file.fileUrl}
                             target="_blank"

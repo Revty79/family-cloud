@@ -72,3 +72,10 @@ Open http://localhost:3000
 - `npm run auth:generate` - generate Better Auth Drizzle schema
 - `npm run db:generate` - generate Drizzle migration
 - `npm run db:migrate` - apply Drizzle migration
+
+## Upload Storage
+
+- File uploads use `FAMILY_CLOUD_STORAGE_DIR` for on-disk storage.
+- Default location is `./storage` under the app working directory.
+- Docker runtime sets this to `/app/storage`.
+- For custom deployments, set `FAMILY_CLOUD_STORAGE_DIR` to a writable path.
