@@ -19,11 +19,11 @@ const calendarSpaces = [
     icon: Clock3,
   },
   {
-    title: "Personal calendar",
+    title: "Private calendar",
     detail:
-      "A private calendar space for individual schedules and personal planning.",
-    href: "/calendars/personal",
-    cta: "Open personal calendar",
+      "Your personal schedule now lives in the Private Cloud dashboard.",
+    href: "/private-cloud/calendar",
+    cta: "Open private calendar",
     icon: UserRound,
   },
 ] as const;

@@ -306,7 +306,6 @@ export function FamilyCommunicationCenter({
             {billboardPosts.length > 0 ? (
               <div className="mt-3 space-y-3">
                 {billboardPosts.map((post) => {
-                  const isOwner = post.createdByUserId === currentUserId;
                   const isPendingDelete = pendingPostDeleteId === post.id;
 
                   return (
@@ -323,17 +322,15 @@ export function FamilyCommunicationCenter({
                             {post.createdByName}
                           </p>
                         </div>
-                        {isOwner ? (
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePost(post.id)}
-                            disabled={isPendingDelete}
-                            className="inline-flex items-center gap-1 rounded-md border border-[#d2b7a1] bg-[#fff3e8] px-2 py-1 text-[11px] font-semibold text-[#7a4730] transition hover:border-[#bf967a] hover:text-[#5f3422] disabled:opacity-70"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {isPendingDelete ? "Removing..." : "Remove"}
-                          </button>
-                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePost(post.id)}
+                          disabled={isPendingDelete}
+                          className="inline-flex items-center gap-1 rounded-md border border-[#d2b7a1] bg-[#fff3e8] px-2 py-1 text-[11px] font-semibold text-[#7a4730] transition hover:border-[#bf967a] hover:text-[#5f3422] disabled:opacity-70"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {isPendingDelete ? "Removing..." : "Remove"}
+                        </button>
                       </div>
                       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#34473e]">
                         {post.message}

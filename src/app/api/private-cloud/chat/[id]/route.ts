@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { familyBillboardPost } from "@/db/schema";
+import { privateCloudChatMessage } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
 
 type RouteContext = {
@@ -17,18 +17,20 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   const params = await context.params;
-  const postId = params.id;
+  const messageId = params.id;
 
   const [deleted] = await db
-    .delete(familyBillboardPost)
-    .where(eq(familyBillboardPost.id, postId))
-    .returning({ id: familyBillboardPost.id });
+    .delete(privateCloudChatMessage)
+    .where(
+      and(
+        eq(privateCloudChatMessage.id, messageId),
+        eq(privateCloudChatMessage.ownerUserId, session.user.id),
+      ),
+    )
+    .returning({ id: privateCloudChatMessage.id });
 
   if (!deleted) {
-    return NextResponse.json(
-      { error: "Post not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Message not found." }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });

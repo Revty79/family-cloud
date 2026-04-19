@@ -1,6 +1,6 @@
 import {
   CalendarDays,
-  Lock,
+  Cloud,
   MessagesSquare,
   Sparkles,
   UploadCloud,
@@ -33,12 +33,12 @@ const cards = [
     cta: "Open communication",
   },
   {
-    title: "Privacy controls",
+    title: "Private cloud",
     detail:
-      "Role and access settings will expand as multi-member features are added.",
-    icon: Lock,
-    href: null,
-    cta: "Coming soon",
+      "Your account-only calendar, private chat, and private files live here.",
+    icon: Cloud,
+    href: "/private-cloud",
+    cta: "Open private cloud",
   },
 ];
 
@@ -54,7 +54,8 @@ export default function DashboardPage() {
           You&apos;re signed in
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-[#3f5048]">
-          This is your protected area. Family features can be added here next.
+          This is your protected area for shared family tools and account-private
+          cloud spaces.
         </p>
       </div>
 
