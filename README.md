@@ -38,25 +38,20 @@ cp .env.example .env.local
 If omitted in production, Better Auth can resolve the URL from incoming requests.
 If you also access the app through other hosts (like LAN IP or router-forwarded address), add them to `BETTER_AUTH_TRUSTED_ORIGINS` as a comma-separated list.
 
-5. Optional web push notifications:
-   1. Generate VAPID keys with `npm run push:keys`.
-   2. Set `NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT` in `.env.local`.
-   3. Push notifications require HTTPS in production.
-
-6. Generate Better Auth Drizzle schema (already included, re-run when auth config/plugins change):
+5. Generate Better Auth Drizzle schema (already included, re-run when auth config/plugins change):
 
 ```bash
 npm run auth:generate
 ```
 
-7. Create and apply database migrations:
+6. Create and apply database migrations:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 ```
 
-8. Start development server:
+7. Start development server:
 
 ```bash
 npm run dev
@@ -77,7 +72,6 @@ Open http://localhost:3000
 - `npm run auth:generate` - generate Better Auth Drizzle schema
 - `npm run db:generate` - generate Drizzle migration
 - `npm run db:migrate` - apply Drizzle migration
-- `npm run push:keys` - generate VAPID keys for web push
 
 ## Upload Storage
 
@@ -92,13 +86,3 @@ Open http://localhost:3000
 - The first account that gets a profile is automatically bootstrapped as `admin`.
 - Admin panel is available at `/admin` and only shown to `admin` on the dashboard.
 - Admins can assign user roles and private storage limits.
-
-## Push Notifications
-
-- Enable/disable/test controls are available on the dashboard.
-- Notifications are sent for:
-  - Shopping list add/check/remove actions
-  - Family billboard posts
-  - Family chat messages
-- Notifications are device-specific, so each phone/tablet/browser must opt in.
-- On iOS/iPadOS, users should add the app to the Home Screen before enabling push.

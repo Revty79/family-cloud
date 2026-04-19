@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth-session";
-import { PushNotificationManager } from "@/components/dashboard/push-notification-manager";
 import { getFamilyRoleLabel } from "@/lib/user-access-client";
 import { getUserRole } from "@/lib/user-access";
 export default async function DashboardPage() {
@@ -88,8 +87,6 @@ export default async function DashboardPage() {
           cloud spaces.
         </p>
       </div>
-
-      <PushNotificationManager />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {cards.map((card) => (

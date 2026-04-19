@@ -4,6 +4,5 @@ export * from "./chore-calendar";
 export * from "./family-communication";
 export * from "./family-files";
 export * from "./private-cloud";
-export * from "./push-notifications";
 export * from "./shopping-list";
 export * from "./user-access";

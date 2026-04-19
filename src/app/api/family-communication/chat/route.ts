@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyChatMessage } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
-import { sendPushNotificationToFamily } from "@/lib/push-notifications";
 import {
   isValidChatMessage,
   maxChatMessageLength,
@@ -65,14 +64,6 @@ export async function POST(request: Request) {
       message,
     })
     .returning();
-
-  await sendPushNotificationToFamily({
-    excludeUserId: session.user.id,
-    title: "New family chat message",
-    body: `${sentByName}: ${message}`,
-    url: "/communication",
-    tag: "family-chat",
-  });
 
   return NextResponse.json({
     message: toFamilyChatMessageItem(created),
