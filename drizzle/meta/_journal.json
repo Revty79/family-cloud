@@ -71,6 +71,13 @@
       "when": 1776622365713,
       "tag": "0009_motionless_inertia",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776626169217,
+      "tag": "0010_lumpy_ink",
+      "breakpoints": true
     }
   ]
 }

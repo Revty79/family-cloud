@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyShoppingItem } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
+import { sendPushNotificationToFamily } from "@/lib/push-notifications";
 import type { FamilyShoppingItem } from "@/lib/shopping-list";
 
 type RouteContext = {
@@ -55,6 +56,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const params = await context.params;
   const itemId = params.id;
   const isChecked = payload.isChecked;
+  const actorName = session.user.name || session.user.email || "Family member";
 
   const [updated] = await db
     .update(familyShoppingItem)
@@ -73,6 +75,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
+  await sendPushNotificationToFamily({
+    excludeUserId: session.user.id,
+    title: "Shopping list updated",
+    body: isChecked
+      ? `${actorName} picked up "${updated.label}".`
+      : `${actorName} marked "${updated.label}" as not picked up.`,
+    url: "/shopping-list",
+    tag: "shopping-list-update",
+  });
+
   return NextResponse.json({
     item: toFamilyShoppingItem(updated),
   });
@@ -86,11 +98,15 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   const params = await context.params;
   const itemId = params.id;
+  const actorName = session.user.name || session.user.email || "Family member";
 
   const [deleted] = await db
     .delete(familyShoppingItem)
     .where(eq(familyShoppingItem.id, itemId))
-    .returning({ id: familyShoppingItem.id });
+    .returning({
+      id: familyShoppingItem.id,
+      label: familyShoppingItem.label,
+    });
 
   if (!deleted) {
     return NextResponse.json(
@@ -98,6 +114,14 @@ export async function DELETE(_request: Request, context: RouteContext) {
       { status: 404 },
     );
   }
+
+  await sendPushNotificationToFamily({
+    excludeUserId: session.user.id,
+    title: "Shopping list updated",
+    body: `${actorName} removed "${deleted.label}".`,
+    url: "/shopping-list",
+    tag: "shopping-list-update",
+  });
 
   return NextResponse.json({ success: true });
 }

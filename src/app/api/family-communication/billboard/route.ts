@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyBillboardPost } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
+import { sendPushNotificationToFamily } from "@/lib/push-notifications";
 import {
   isValidBillboardMessage,
   isValidBillboardTitle,
@@ -82,6 +83,14 @@ export async function POST(request: Request) {
       message,
     })
     .returning();
+
+  await sendPushNotificationToFamily({
+    excludeUserId: session.user.id,
+    title: "Family billboard update",
+    body: `${createdByName}: ${title}`,
+    url: "/communication",
+    tag: "family-billboard",
+  });
 
   return NextResponse.json({
     post: toFamilyBillboardPostItem(created),

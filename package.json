@@ -10,7 +10,8 @@
     "auth:generate": "npx auth generate --config ./src/lib/auth.ts --output ./src/db/schema/auth.ts --yes",
     "auth:secret": "npx auth secret",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "push:keys": "npx web-push generate-vapid-keys"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.5",
@@ -23,7 +24,8 @@
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -32,6 +34,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",

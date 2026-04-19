@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyShoppingItem } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
+import { sendPushNotificationToFamily } from "@/lib/push-notifications";
 import {
   isValidShoppingItemLabel,
   isValidShoppingListBucket,
@@ -80,6 +81,14 @@ export async function POST(request: Request) {
       bucket: bucketRaw,
     })
     .returning();
+
+  await sendPushNotificationToFamily({
+    excludeUserId: session.user.id,
+    title: "Shopping list updated",
+    body: `${createdByName} added "${label}" to ${bucketRaw}.`,
+    url: "/shopping-list",
+    tag: "shopping-list-update",
+  });
 
   return NextResponse.json({
     item: toFamilyShoppingItem(created),
