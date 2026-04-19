@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Cloud,
   MessagesSquare,
+  ShoppingBasket,
   Sparkles,
   UploadCloud,
 } from "lucide-react";
@@ -37,6 +38,14 @@ export default async function DashboardPage() {
       icon: MessagesSquare,
       href: "/communication",
       cta: "Open communication",
+    },
+    {
+      title: "Shopping list",
+      detail:
+        "Track family needs and wants, then check items off as they are picked up.",
+      icon: ShoppingBasket,
+      href: "/shopping-list",
+      cta: "Open shopping list",
     },
     {
       title: "Private cloud",
