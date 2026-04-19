@@ -1,11 +1,16 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { Clock3, MessageCircle, SendHorizontal, Trash2 } from "lucide-react";
-import type { PrivateCloudChatMessageItem } from "@/lib/private-cloud";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Clock3, MessageCircle, SendHorizontal, Trash2, UserRound } from "lucide-react";
+import type {
+  PrivateCloudChatMessageItem,
+  PrivateCloudChatParticipant,
+} from "@/lib/private-cloud";
 
 type PrivateCloudChatCenterProps = {
   initialMessages: PrivateCloudChatMessageItem[];
+  participants: PrivateCloudChatParticipant[];
+  initialRecipientUserId: string | null;
   currentUserId: string;
 };
 
@@ -36,14 +41,36 @@ function sortMessages(messages: PrivateCloudChatMessageItem[]) {
   );
 }
 
+function isPrivateCloudChatMessageItem(value: unknown): value is PrivateCloudChatMessageItem {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.id === "string" &&
+    typeof row.message === "string" &&
+    typeof row.sentByName === "string" &&
+    typeof row.sentByUserId === "string" &&
+    typeof row.recipientUserId === "string" &&
+    typeof row.createdAt === "string"
+  );
+}
+
 export function PrivateCloudChatCenter({
   initialMessages,
+  participants,
+  initialRecipientUserId,
   currentUserId,
 }: PrivateCloudChatCenterProps) {
+  const [selectedRecipientUserId, setSelectedRecipientUserId] = useState<
+    string | null
+  >(initialRecipientUserId);
   const [messages, setMessages] = useState<PrivateCloudChatMessageItem[]>(() =>
     sortMessages(initialMessages),
   );
   const [messageInput, setMessageInput] = useState("");
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -60,8 +87,80 @@ export function PrivateCloudChatCenter({
     [],
   );
 
+  const selectedRecipient = useMemo(
+    () =>
+      participants.find((participant) => participant.id === selectedRecipientUserId) ??
+      null,
+    [participants, selectedRecipientUserId],
+  );
+  const visibleMessages = selectedRecipient ? messages : [];
+
+  useEffect(() => {
+    if (!selectedRecipientUserId) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadConversation = async () => {
+      setChatError(null);
+      setIsLoadingThread(true);
+
+      try {
+        const response = await fetch(
+          `/api/private-cloud/chat?withUserId=${encodeURIComponent(selectedRecipientUserId)}`,
+          {
+            method: "GET",
+          },
+        );
+
+        const payload = await parseJson(response);
+        if (!response.ok) {
+          if (isActive) {
+            setChatError(parseApiError(payload));
+          }
+          return;
+        }
+
+        const rows =
+          payload &&
+          typeof payload === "object" &&
+          "messages" in payload &&
+          Array.isArray(payload.messages)
+            ? payload.messages
+            : [];
+
+        const parsedMessages = rows.filter(isPrivateCloudChatMessageItem);
+
+        if (isActive) {
+          setMessages(sortMessages(parsedMessages));
+        }
+      } catch {
+        if (isActive) {
+          setChatError("Could not load this conversation right now.");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingThread(false);
+        }
+      }
+    };
+
+    void loadConversation();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedRecipientUserId]);
+
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!selectedRecipientUserId) {
+      setChatError("Choose someone to message first.");
+      return;
+    }
+
     setChatError(null);
     setIsSending(true);
 
@@ -73,6 +172,7 @@ export function PrivateCloudChatCenter({
         },
         body: JSON.stringify({
           message: messageInput,
+          recipientUserId: selectedRecipientUserId,
         }),
       });
 
@@ -86,9 +186,8 @@ export function PrivateCloudChatCenter({
         payload &&
         typeof payload === "object" &&
         "message" in payload &&
-        payload.message &&
-        typeof payload.message === "object"
-          ? (payload.message as PrivateCloudChatMessageItem)
+        isPrivateCloudChatMessageItem(payload.message)
+          ? payload.message
           : null;
 
       if (!message || typeof message.id !== "string") {
@@ -141,7 +240,8 @@ export function PrivateCloudChatCenter({
           Private chat
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-7 fc-text-muted">
-          Keep private notes and messages inside your account-only chat thread.
+          Send direct private messages by choosing a recipient from your family
+          accounts.
         </p>
       </div>
 
@@ -154,21 +254,55 @@ export function PrivateCloudChatCenter({
           <form className="mt-3 space-y-2" onSubmit={handleSend}>
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#607169]">
+                Send to
+              </span>
+              <div className="mt-1 flex items-center gap-2 rounded-md border border-[#cbbba4] bg-[#fffdf8] px-2.5">
+                <UserRound className="h-4 w-4 text-[#63746b]" />
+                <select
+                  value={selectedRecipientUserId ?? ""}
+                  onChange={(event) =>
+                    setSelectedRecipientUserId(event.target.value || null)
+                  }
+                  className="w-full bg-transparent py-2 text-sm text-[#2f4038] outline-none"
+                  disabled={participants.length === 0}
+                >
+                  {participants.length === 0 ? (
+                    <option value="">No other users available</option>
+                  ) : null}
+                  {participants.length > 0 ? (
+                    <option value="">Choose a person</option>
+                  ) : null}
+                  {participants.map((participant) => (
+                    <option key={participant.id} value={participant.id}>
+                      {participant.name} ({participant.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#607169]">
                 Message
               </span>
               <textarea
                 value={messageInput}
                 onChange={(event) => setMessageInput(event.target.value)}
-                placeholder="Keep this private reminder handy..."
+                placeholder={
+                  selectedRecipient
+                    ? `Message ${selectedRecipient.name}...`
+                    : "Choose a recipient to start messaging"
+                }
                 rows={3}
                 className="mt-1 w-full rounded-md border border-[#cbbba4] bg-[#fffdf8] px-2.5 py-2 text-sm text-[#2f4038] outline-none transition focus:border-[#9e8569] focus:ring-2 focus:ring-[#d9c3a6]"
                 required
+                disabled={!selectedRecipientUserId}
               />
             </label>
 
             <button
               type="submit"
-              disabled={isSending}
+              disabled={isSending || !selectedRecipientUserId}
               className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#a08062] bg-[#b86642] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#9d5737] disabled:opacity-70"
             >
               <SendHorizontal className="h-4 w-4" />
@@ -182,12 +316,20 @@ export function PrivateCloudChatCenter({
 
         <div className="rounded-xl border border-[#d8c8b1] bg-[#fffaf2] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5b6b63]">
-            Chat thread
+            {selectedRecipient
+              ? `Chat with ${selectedRecipient.name}`
+              : "Chat thread"}
           </p>
 
-          {messages.length > 0 ? (
+          {isLoadingThread ? (
+            <p className="mt-3 rounded-lg border border-dashed border-[#d4c4ae] bg-[#fff8ef] px-3 py-2 text-sm fc-text-muted">
+              Loading conversation...
+            </p>
+          ) : null}
+
+          {!isLoadingThread && visibleMessages.length > 0 ? (
             <div className="mt-3 max-h-[38rem] space-y-2 overflow-y-auto pr-1">
-              {messages.map((message) => {
+              {visibleMessages.map((message) => {
                 const isOwner = message.sentByUserId === currentUserId;
                 const isPendingDelete = pendingDeleteId === message.id;
 
@@ -200,15 +342,17 @@ export function PrivateCloudChatCenter({
                       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#66766e]">
                         {isOwner ? "You" : message.sentByName}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(message.id)}
-                        disabled={isPendingDelete}
-                        className="inline-flex items-center gap-1 rounded-md border border-[#d2b7a1] bg-[#fff3e8] px-2 py-1 text-[11px] font-semibold text-[#7a4730] transition hover:border-[#bf967a] hover:text-[#5f3422] disabled:opacity-70"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        {isPendingDelete ? "..." : "Remove"}
-                      </button>
+                      {isOwner ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(message.id)}
+                          disabled={isPendingDelete}
+                          className="inline-flex items-center gap-1 rounded-md border border-[#d2b7a1] bg-[#fff3e8] px-2 py-1 text-[11px] font-semibold text-[#7a4730] transition hover:border-[#bf967a] hover:text-[#5f3422] disabled:opacity-70"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {isPendingDelete ? "..." : "Remove"}
+                        </button>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm leading-6 text-[#34473e]">
                       {message.message}
@@ -221,11 +365,15 @@ export function PrivateCloudChatCenter({
                 );
               })}
             </div>
-          ) : (
+          ) : null}
+
+          {!isLoadingThread && visibleMessages.length === 0 ? (
             <p className="mt-3 rounded-lg border border-dashed border-[#d4c4ae] bg-[#fff8ef] px-3 py-2 text-sm fc-text-muted">
-              No private messages yet. Add your first note.
+              {selectedRecipient
+                ? "No messages yet. Start the conversation."
+                : "Choose a recipient to view messages."}
             </p>
-          )}
+          ) : null}
         </div>
       </div>
     </article>

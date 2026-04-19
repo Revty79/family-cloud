@@ -24,13 +24,16 @@ export async function DELETE(_request: Request, context: RouteContext) {
     .where(
       and(
         eq(privateCloudChatMessage.id, messageId),
-        eq(privateCloudChatMessage.ownerUserId, session.user.id),
+        eq(privateCloudChatMessage.sentByUserId, session.user.id),
       ),
     )
     .returning({ id: privateCloudChatMessage.id });
 
   if (!deleted) {
-    return NextResponse.json({ error: "Message not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Message not found." },
+      { status: 404 },
+    );
   }
 
   return NextResponse.json({ success: true });

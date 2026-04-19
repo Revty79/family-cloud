@@ -38,6 +38,9 @@ export const privateCloudChatMessage = pgTable(
     sentByUserId: text("sent_by_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    recipientUserId: text("recipient_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
     sentByName: text("sent_by_name").notNull(),
     message: text("message").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -49,6 +52,9 @@ export const privateCloudChatMessage = pgTable(
   (table) => [
     index("private_cloud_chat_message_owner_user_id_idx").on(table.ownerUserId),
     index("private_cloud_chat_message_sent_by_user_id_idx").on(table.sentByUserId),
+    index("private_cloud_chat_message_recipient_user_id_idx").on(
+      table.recipientUserId,
+    ),
     index("private_cloud_chat_message_created_at_idx").on(table.createdAt),
   ],
 );

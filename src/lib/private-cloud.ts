@@ -29,7 +29,14 @@ export type PrivateCloudChatMessageItem = {
   message: string;
   sentByName: string;
   sentByUserId: string;
+  recipientUserId: string;
   createdAt: string;
+};
+
+export type PrivateCloudChatParticipant = {
+  id: string;
+  name: string;
+  email: string;
 };
 
 export const maxPrivateCloudFileSizeBytes = 15 * 1024 * 1024;

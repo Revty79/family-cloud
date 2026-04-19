@@ -12,7 +12,7 @@ const privateCloudAreas = [
   },
   {
     title: "Private chat",
-    detail: "Your personal message thread for notes and quick reminders.",
+    detail: "Direct private messages between family accounts.",
     href: "/private-cloud/chat",
     cta: "Open chat",
     icon: MessageCircle,
