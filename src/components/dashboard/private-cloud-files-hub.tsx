@@ -90,7 +90,12 @@ function parseApiError(payload: unknown) {
 
 async function parseJson(response: Response) {
   try {
-    return (await response.json()) as unknown;
+    const text = await response.text();
+    if (!text) {
+      return null;
+    }
+
+    return JSON.parse(text) as unknown;
   } catch {
     return null;
   }
@@ -178,6 +183,13 @@ export function PrivateCloudFilesHub({
 
       const payload = await parseJson(response);
       if (!response.ok) {
+        if (response.status === 413) {
+          setFileError(
+            "This photo is too large for the current server upload limit. Try a smaller file.",
+          );
+          return;
+        }
+
         setFileError(parseApiError(payload));
         return;
       }

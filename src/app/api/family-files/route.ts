@@ -8,6 +8,7 @@ import {
   isAllowedFamilyFileMimeType,
   isFamilyFileCategory,
   maxFamilyFileSizeBytes,
+  normalizeFamilyUploadMimeType,
   type FamilyFileItem,
 } from "@/lib/family-files";
 import {
@@ -56,103 +57,119 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let formData: FormData;
   try {
-    formData = await request.formData();
-  } catch {
-    return NextResponse.json({ error: "Invalid form data." }, { status: 400 });
-  }
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return NextResponse.json({ error: "Invalid form data." }, { status: 400 });
+    }
 
-  const rawTitle = formData.get("title");
-  const rawCategory = formData.get("category");
-  const rawFile = formData.get("file");
+    const rawTitle = formData.get("title");
+    const rawCategory = formData.get("category");
+    const rawFile = formData.get("file");
 
-  const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
-  const category = typeof rawCategory === "string" ? rawCategory.trim() : "";
+    const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
+    const category = typeof rawCategory === "string" ? rawCategory.trim() : "";
 
-  if (!title) {
-    return NextResponse.json({ error: "Title is required." }, { status: 400 });
-  }
+    if (!title) {
+      return NextResponse.json({ error: "Title is required." }, { status: 400 });
+    }
 
-  if (!isFamilyFileCategory(category)) {
-    return NextResponse.json(
-      {
-        error: `Category is invalid. Use one of: ${getFamilyFileCategoryLabel("document")}, ${getFamilyFileCategoryLabel("photo")}, ${getFamilyFileCategoryLabel("record")}, ${getFamilyFileCategoryLabel("vault")}.`,
-      },
-      { status: 400 },
+    if (!isFamilyFileCategory(category)) {
+      return NextResponse.json(
+        {
+          error: `Category is invalid. Use one of: ${getFamilyFileCategoryLabel("document")}, ${getFamilyFileCategoryLabel("photo")}, ${getFamilyFileCategoryLabel("record")}, ${getFamilyFileCategoryLabel("vault")}.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!(rawFile instanceof File)) {
+      return NextResponse.json(
+        { error: "A file upload is required." },
+        { status: 400 },
+      );
+    }
+
+    if (rawFile.size <= 0) {
+      return NextResponse.json(
+        { error: "The selected file is empty." },
+        { status: 400 },
+      );
+    }
+
+    if (rawFile.size > maxFamilyFileSizeBytes) {
+      return NextResponse.json(
+        {
+          error: `File is too large. Maximum size is ${Math.floor(
+            maxFamilyFileSizeBytes / (1024 * 1024),
+          )} MB.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const originalName = sanitizeOriginalFileName(rawFile.name);
+    const normalizedMimeType = normalizeFamilyUploadMimeType(
+      rawFile.type,
+      originalName,
     );
-  }
 
-  if (!(rawFile instanceof File)) {
-    return NextResponse.json(
-      { error: "A file upload is required." },
-      { status: 400 },
-    );
-  }
+    if (!isAllowedFamilyFileMimeType(normalizedMimeType)) {
+      return NextResponse.json(
+        {
+          error:
+            "This file type is not supported yet. Use common image, PDF, text, Word, Excel, or PowerPoint formats.",
+        },
+        { status: 400 },
+      );
+    }
 
-  if (rawFile.size <= 0) {
-    return NextResponse.json(
-      { error: "The selected file is empty." },
-      { status: 400 },
-    );
-  }
+    const extension = getFamilyFileExtension(originalName) || ".bin";
+    const fileId = crypto.randomUUID();
+    const storedName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
+    const fileUrl = getFamilyFileDownloadUrl(fileId);
+    const uploadDirectory = getFamilyFilesUploadDirectory();
+    const storedFilePath = resolveFamilyFilePath(storedName);
 
-  if (rawFile.size > maxFamilyFileSizeBytes) {
-    return NextResponse.json(
-      {
-        error: `File is too large. Maximum size is ${Math.floor(
-          maxFamilyFileSizeBytes / (1024 * 1024),
-        )} MB.`,
-      },
-      { status: 400 },
-    );
-  }
+    await mkdir(uploadDirectory, { recursive: true });
+    const fileBuffer = Buffer.from(await rawFile.arrayBuffer());
+    await writeFile(storedFilePath, fileBuffer);
 
-  if (!isAllowedFamilyFileMimeType(rawFile.type)) {
+    try {
+      const [created] = await db
+        .insert(familyFile)
+        .values({
+          id: fileId,
+          uploadedByUserId: session.user.id,
+          title,
+          originalName,
+          storedName,
+          fileUrl,
+          mimeType: normalizedMimeType,
+          sizeBytes: rawFile.size,
+          category,
+        })
+        .returning();
+
+      return NextResponse.json({
+        file: toFamilyFileItem(created),
+      });
+    } catch {
+      await unlink(storedFilePath).catch(() => null);
+      return NextResponse.json(
+        { error: "Could not save this file right now." },
+        { status: 500 },
+      );
+    }
+  } catch (error) {
+    console.error("Family file upload failed.", error);
     return NextResponse.json(
       {
         error:
-          "This file type is not supported yet. Use common image, PDF, text, Word, Excel, or PowerPoint formats.",
+          "Could not upload this file right now. Please try again in a moment.",
       },
-      { status: 400 },
-    );
-  }
-
-  const originalName = sanitizeOriginalFileName(rawFile.name);
-  const extension = getFamilyFileExtension(originalName) || ".bin";
-  const fileId = crypto.randomUUID();
-  const storedName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-  const fileUrl = getFamilyFileDownloadUrl(fileId);
-  const uploadDirectory = getFamilyFilesUploadDirectory();
-  const storedFilePath = resolveFamilyFilePath(storedName);
-
-  await mkdir(uploadDirectory, { recursive: true });
-  const fileBuffer = Buffer.from(await rawFile.arrayBuffer());
-  await writeFile(storedFilePath, fileBuffer);
-
-  try {
-    const [created] = await db
-      .insert(familyFile)
-      .values({
-        id: fileId,
-        uploadedByUserId: session.user.id,
-        title,
-        originalName,
-        storedName,
-        fileUrl,
-        mimeType: rawFile.type,
-        sizeBytes: rawFile.size,
-        category,
-      })
-      .returning();
-
-    return NextResponse.json({
-      file: toFamilyFileItem(created),
-    });
-  } catch {
-    await unlink(storedFilePath).catch(() => null);
-    return NextResponse.json(
-      { error: "Could not save this file right now." },
       { status: 500 },
     );
   }
