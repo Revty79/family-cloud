@@ -5,7 +5,10 @@ import { db } from "../db";
 import * as schema from "../db/schema";
 import { sendPasswordResetEmail } from "./email";
 
-const baseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+const configuredBaseUrl = process.env.BETTER_AUTH_URL?.trim() || undefined;
+const baseUrl =
+  configuredBaseUrl ||
+  (process.env.NODE_ENV === "production" ? undefined : "http://localhost:3000");
 const authSecret =
   process.env.BETTER_AUTH_SECRET ??
   "family-cloud-dev-secret-change-in-production";
@@ -23,16 +26,18 @@ function parseTrustedOrigins(value: string | undefined) {
 
 const trustedOrigins = Array.from(
   new Set([
-    baseUrl,
+    ...(baseUrl ? [baseUrl] : []),
     ...parseTrustedOrigins(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
+    ...parseTrustedOrigins(process.env.NEXT_PUBLIC_BETTER_AUTH_URL),
+    ...parseTrustedOrigins(process.env.NEXT_PUBLIC_AUTH_URL),
   ]),
 );
 
 export const auth = betterAuth({
   appName: "Family Cloud",
-  baseURL: baseUrl,
+  ...(baseUrl ? { baseURL: baseUrl } : {}),
   secret: authSecret,
-  trustedOrigins,
+  ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,

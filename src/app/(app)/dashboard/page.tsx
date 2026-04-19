@@ -1,4 +1,10 @@
-import { CalendarDays, Lock, Sparkles, UploadCloud } from "lucide-react";
+import {
+  CalendarDays,
+  Lock,
+  MessagesSquare,
+  Sparkles,
+  UploadCloud,
+} from "lucide-react";
 import Link from "next/link";
 
 const cards = [
@@ -17,6 +23,14 @@ const cards = [
     icon: UploadCloud,
     href: "/files",
     cta: "Open files",
+  },
+  {
+    title: "Communication center",
+    detail:
+      "Post updates to the family billboard and chat together in one place.",
+    icon: MessagesSquare,
+    href: "/communication",
+    cta: "Open communication",
   },
   {
     title: "Privacy controls",
@@ -44,7 +58,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <article
             key={card.title}
