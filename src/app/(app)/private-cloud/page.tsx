@@ -19,7 +19,7 @@ const privateCloudAreas = [
   },
   {
     title: "Private files",
-    detail: "Upload and manage account-private files with 5GB of storage.",
+    detail: "Upload and manage account-private files with your assigned storage quota.",
     href: "/private-cloud/files",
     cta: "Open files",
     icon: UploadCloud,
@@ -48,7 +48,7 @@ export default async function PrivateCloudPage() {
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-[#3f5048]">
           Choose where you want to go. Everything in this space is private to
-          your signed-in account, including your 5GB private files area.
+          your signed-in account, including your private files area.
         </p>
       </div>
 

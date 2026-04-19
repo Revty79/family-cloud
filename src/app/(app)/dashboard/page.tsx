@@ -1,4 +1,5 @@
 import {
+  ShieldCheck,
   CalendarDays,
   Cloud,
   MessagesSquare,
@@ -6,43 +7,59 @@ import {
   UploadCloud,
 } from "lucide-react";
 import Link from "next/link";
+import { requireSession } from "@/lib/auth-session";
+import { getFamilyRoleLabel } from "@/lib/user-access-client";
+import { getUserRole } from "@/lib/user-access";
+export default async function DashboardPage() {
+  const session = await requireSession("/login?next=/dashboard");
+  const role = await getUserRole(session.user.id);
+  const cards = [
+    {
+      title: "Calendars",
+      detail:
+        "Choose between family, chore, and personal calendar spaces.",
+      icon: CalendarDays,
+      href: "/calendars",
+      cta: "Open calendars",
+    },
+    {
+      title: "Family files",
+      detail:
+        "Keep shared documents, photos, and household records in one place.",
+      icon: UploadCloud,
+      href: "/files",
+      cta: "Open files",
+    },
+    {
+      title: "Communication center",
+      detail:
+        "Post updates to the family billboard and chat together in one place.",
+      icon: MessagesSquare,
+      href: "/communication",
+      cta: "Open communication",
+    },
+    {
+      title: "Private cloud",
+      detail:
+        "Your account-only calendar, private chat, and private files live here.",
+      icon: Cloud,
+      href: "/private-cloud",
+      cta: "Open private cloud",
+    },
+    ...(role === "admin"
+      ? [
+          {
+            title: "Admin panel",
+            detail:
+              "Assign roles and private storage limits for each family account.",
+            icon: ShieldCheck,
+            href: "/admin",
+            cta: "Open admin panel",
+          },
+        ]
+      : []),
+  ];
 
-const cards = [
-  {
-    title: "Calendars",
-    detail:
-      "Choose between family, chore, and personal calendar spaces.",
-    icon: CalendarDays,
-    href: "/calendars",
-    cta: "Open calendars",
-  },
-  {
-    title: "Family files",
-    detail:
-      "Keep shared documents, photos, and household records in one place.",
-    icon: UploadCloud,
-    href: "/files",
-    cta: "Open files",
-  },
-  {
-    title: "Communication center",
-    detail:
-      "Post updates to the family billboard and chat together in one place.",
-    icon: MessagesSquare,
-    href: "/communication",
-    cta: "Open communication",
-  },
-  {
-    title: "Private cloud",
-    detail:
-      "Your account-only calendar, private chat, and private files live here.",
-    icon: Cloud,
-    href: "/private-cloud",
-    cta: "Open private cloud",
-  },
-];
-
-export default function DashboardPage() {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-[#d7c8b2] bg-gradient-to-r from-[#f9ecda] to-[#dce8e5] p-7 sm:p-8">
@@ -53,13 +70,16 @@ export default function DashboardPage() {
         <h1 className="mt-4 font-display text-4xl tracking-tight text-[#21322c]">
           You&apos;re signed in
         </h1>
+        <p className="mt-2 inline-flex rounded-full border border-[#d2c2ac] bg-[#f4e9d7] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.11em] text-[#4b5a53]">
+          Role: {getFamilyRoleLabel(role)}
+        </p>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-[#3f5048]">
           This is your protected area for shared family tools and account-private
           cloud spaces.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {cards.map((card) => (
           <article
             key={card.title}

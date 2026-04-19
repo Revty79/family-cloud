@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
-  defaultPrivateCloudStorageLimitBytes,
   formatFileSize,
   getPrivateCloudFileCategoryLabel,
   isPrivateCloudFileCategory,
@@ -24,6 +23,7 @@ import {
 
 type PrivateCloudFilesHubProps = {
   initialFiles: PrivateCloudFileItem[];
+  storageLimitBytes: number;
 };
 
 type FilesViewTab = "all" | PrivateCloudFileCategory;
@@ -103,6 +103,7 @@ async function parseJson(response: Response) {
 
 export function PrivateCloudFilesHub({
   initialFiles,
+  storageLimitBytes,
 }: PrivateCloudFilesHubProps) {
   const [activeFileTab, setActiveFileTab] = useState<FilesViewTab>("all");
   const [files, setFiles] = useState<PrivateCloudFileItem[]>(
@@ -142,10 +143,10 @@ export function PrivateCloudFilesHub({
     () => files.reduce((sum, file) => sum + file.sizeBytes, 0),
     [files],
   );
-  const remainingBytes = Math.max(0, defaultPrivateCloudStorageLimitBytes - usedBytes);
+  const remainingBytes = Math.max(0, storageLimitBytes - usedBytes);
   const usagePercent = Math.min(
     100,
-    Math.round((usedBytes / defaultPrivateCloudStorageLimitBytes) * 100),
+    Math.round((usedBytes / Math.max(storageLimitBytes, 1)) * 100),
   );
 
   const handleUploadFile = async (event: FormEvent<HTMLFormElement>) => {
@@ -284,7 +285,7 @@ export function PrivateCloudFilesHub({
             Storage usage
           </p>
           <p className="text-xs font-semibold text-[#4e5f56]">
-            {formatFileSize(usedBytes)} of {formatFileSize(defaultPrivateCloudStorageLimitBytes)}
+            {formatFileSize(usedBytes)} of {formatFileSize(storageLimitBytes)}
           </p>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e8d8c0]">

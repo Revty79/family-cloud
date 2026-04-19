@@ -143,15 +143,23 @@ export function isValidPrivateChatMessage(value: string) {
 }
 
 export function buildPrivateStorageSummary(usedBytes: number): PrivateCloudStorageSummary {
-  const normalizedUsedBytes = Math.max(0, usedBytes);
-  const remainingBytes = Math.max(
-    0,
-    defaultPrivateCloudStorageLimitBytes - normalizedUsedBytes,
+  return buildPrivateStorageSummaryWithLimit(
+    usedBytes,
+    defaultPrivateCloudStorageLimitBytes,
   );
+}
+
+export function buildPrivateStorageSummaryWithLimit(
+  usedBytes: number,
+  limitBytes: number,
+): PrivateCloudStorageSummary {
+  const normalizedUsedBytes = Math.max(0, usedBytes);
+  const normalizedLimitBytes = Math.max(0, limitBytes);
+  const remainingBytes = Math.max(0, normalizedLimitBytes - normalizedUsedBytes);
 
   return {
     usedBytes: normalizedUsedBytes,
-    limitBytes: defaultPrivateCloudStorageLimitBytes,
+    limitBytes: normalizedLimitBytes,
     remainingBytes,
   };
 }

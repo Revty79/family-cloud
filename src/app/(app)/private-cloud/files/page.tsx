@@ -5,9 +5,11 @@ import { db } from "@/db";
 import { privateCloudFile } from "@/db/schema";
 import type { PrivateCloudFileItem } from "@/lib/private-cloud";
 import { requireSession } from "@/lib/auth-session";
+import { getUserPrivateStorageLimitBytes } from "@/lib/user-access";
 
 export default async function PrivateCloudFilesPage() {
   const session = await requireSession("/login?next=/private-cloud/files");
+  const storageLimitBytes = await getUserPrivateStorageLimitBytes(session.user.id);
 
   const fileRows = await db
     .select({
@@ -55,7 +57,10 @@ export default async function PrivateCloudFilesPage() {
         <span>Private files</span>
       </div>
 
-      <PrivateCloudFilesHub initialFiles={initialFiles} />
+      <PrivateCloudFilesHub
+        initialFiles={initialFiles}
+        storageLimitBytes={storageLimitBytes}
+      />
     </section>
   );
 }

@@ -5,8 +5,7 @@ import { db } from "@/db";
 import { privateCloudFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
 import {
-  buildPrivateStorageSummary,
-  defaultPrivateCloudStorageLimitBytes,
+  buildPrivateStorageSummaryWithLimit,
   formatFileSize,
   getPrivateCloudFileCategoryLabel,
   isAllowedPrivateCloudFileMimeType,
@@ -16,6 +15,7 @@ import {
   type PrivateCloudFileItem,
   type PrivateCloudStorageSummary,
 } from "@/lib/private-cloud";
+import { ensureUserAccessProfile } from "@/lib/user-access";
 import {
   getPrivateCloudFileDownloadUrl,
   getPrivateCloudFileExtension,
@@ -71,6 +71,7 @@ function getUploadFailureMessage(error: unknown) {
 
 async function getPrivateCloudStorageSummaryForUser(
   userId: string,
+  limitBytes: number,
 ): Promise<PrivateCloudStorageSummary> {
   const [usageRow] = await db
     .select({
@@ -79,7 +80,10 @@ async function getPrivateCloudStorageSummaryForUser(
     .from(privateCloudFile)
     .where(eq(privateCloudFile.ownerUserId, userId));
 
-  return buildPrivateStorageSummary(parseNumericValue(usageRow?.totalBytes));
+  return buildPrivateStorageSummaryWithLimit(
+    parseNumericValue(usageRow?.totalBytes),
+    limitBytes,
+  );
 }
 
 export async function GET() {
@@ -88,13 +92,18 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const profile = await ensureUserAccessProfile(session.user.id);
+
   const rows = await db
     .select()
     .from(privateCloudFile)
     .where(eq(privateCloudFile.ownerUserId, session.user.id))
     .orderBy(desc(privateCloudFile.createdAt));
 
-  const storage = await getPrivateCloudStorageSummaryForUser(session.user.id);
+  const storage = await getPrivateCloudStorageSummaryForUser(
+    session.user.id,
+    profile.privateStorageLimitBytes,
+  );
 
   return NextResponse.json({
     files: rows.map(toPrivateCloudFileItem),
@@ -177,19 +186,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const profile = await ensureUserAccessProfile(session.user.id);
     const currentStorage = await getPrivateCloudStorageSummaryForUser(
       session.user.id,
+      profile.privateStorageLimitBytes,
     );
 
     if (
       currentStorage.usedBytes + rawFile.size >
-      defaultPrivateCloudStorageLimitBytes
+      profile.privateStorageLimitBytes
     ) {
       return NextResponse.json(
         {
           error: `Private cloud storage limit reached. You have ${formatFileSize(
             currentStorage.remainingBytes,
-          )} remaining out of ${formatFileSize(defaultPrivateCloudStorageLimitBytes)}.`,
+          )} remaining out of ${formatFileSize(profile.privateStorageLimitBytes)}.`,
           storage: currentStorage,
         },
         { status: 400 },
@@ -223,7 +234,10 @@ export async function POST(request: Request) {
         })
         .returning();
 
-      const storage = await getPrivateCloudStorageSummaryForUser(session.user.id);
+      const storage = await getPrivateCloudStorageSummaryForUser(
+        session.user.id,
+        profile.privateStorageLimitBytes,
+      );
 
       return NextResponse.json({
         file: toPrivateCloudFileItem(created),

@@ -79,3 +79,10 @@ Open http://localhost:3000
 - Default location is `./storage` under the app working directory.
 - Docker runtime sets this to `/app/storage`.
 - For custom deployments, set `FAMILY_CLOUD_STORAGE_DIR` to a writable path.
+
+## Roles and Admin
+
+- Supported roles: `admin`, `family_leader`, `family_member`.
+- The first account that gets a profile is automatically bootstrapped as `admin`.
+- Admin panel is available at `/admin` and only shown to `admin` on the dashboard.
+- Admins can assign user roles and private storage limits.
