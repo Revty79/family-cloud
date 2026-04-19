@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { FamilyCalendar } from "@/components/dashboard/family-calendar";
 import { db } from "@/db";
 import { calendarEvent } from "@/db/schema";
@@ -18,6 +18,7 @@ export default async function CalendarPage() {
       time: calendarEvent.time,
     })
     .from(calendarEvent)
+    .where(eq(calendarEvent.scope, "family"))
     .orderBy(
       asc(calendarEvent.date),
       asc(calendarEvent.time),

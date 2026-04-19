@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/cn";
 import {
   type CalendarCustomEvent,
+  type CalendarEventScope,
   type CustomCalendarEventType,
   customCalendarEventTypes,
   isCalendarDateKey,
@@ -33,6 +34,40 @@ type FamilyEvent = {
 
 type FamilyCalendarProps = {
   initialCustomEvents: CalendarCustomEvent[];
+  scope?: CalendarEventScope;
+};
+
+type CalendarCopy = {
+  pillLabel: string;
+  heading: string;
+  description: string;
+  addHeading: string;
+  upcomingHeading: string;
+  emptyUpcomingMessage: string;
+  titlePlaceholder: string;
+};
+
+const calendarCopyByScope: Record<CalendarEventScope, CalendarCopy> = {
+  family: {
+    pillLabel: "Plans and schedules",
+    heading: "Family calendar",
+    description:
+      "Add and remove shared family events anytime. U.S. federal holidays are preloaded.",
+    addHeading: "Add event",
+    upcomingHeading: "Upcoming",
+    emptyUpcomingMessage: "No upcoming events yet.",
+    titlePlaceholder: "Soccer practice",
+  },
+  personal: {
+    pillLabel: "Private planning",
+    heading: "Personal calendar",
+    description:
+      "Private events and reminders that only your account can see. U.S. federal holidays are preloaded.",
+    addHeading: "Add private event",
+    upcomingHeading: "My upcoming",
+    emptyUpcomingMessage: "No upcoming personal events yet.",
+    titlePlaceholder: "Therapy appointment",
+  },
 };
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -227,7 +262,14 @@ async function parseJson(response: Response) {
   }
 }
 
-export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
+export function FamilyCalendar({
+  initialCustomEvents,
+  scope = "family",
+}: FamilyCalendarProps) {
+  const copy = calendarCopyByScope[scope];
+  const defaultEventType: CustomCalendarEventType =
+    scope === "personal" ? "Home" : "Family";
+
   const today = useMemo(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -242,7 +284,9 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
   const [formTitle, setFormTitle] = useState("");
   const [formDate, setFormDate] = useState(formatDateKey(today));
   const [formTime, setFormTime] = useState("");
-  const [formType, setFormType] = useState<CustomCalendarEventType>("Family");
+  const [formType, setFormType] = useState<CustomCalendarEventType>(
+    defaultEventType,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -375,6 +419,7 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
           date,
           type: formType,
           time: time || undefined,
+          scope,
         }),
       });
 
@@ -455,14 +500,13 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
         <div>
           <p className="fc-pill">
             <CalendarDays className="h-4 w-4 text-sage" />
-            Plans and schedules
+            {copy.pillLabel}
           </p>
           <h2 className="mt-3 font-display text-3xl tracking-tight text-[#23362f]">
-            Family calendar
+            {copy.heading}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-7 fc-text-muted">
-            Add and remove shared family events anytime. U.S. federal holidays
-            are preloaded.
+            {copy.description}
           </p>
         </div>
 
@@ -559,7 +603,7 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
           <div className="rounded-lg border border-[#d4c4ae] bg-[#fff8ef] p-3">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#4e5f56]">
               <Plus className="h-4 w-4 text-accent" />
-              Add event
+              {copy.addHeading}
             </p>
             <form className="mt-3 space-y-2" onSubmit={handleAddEvent}>
               <label className="block">
@@ -569,7 +613,7 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
                 <input
                   value={formTitle}
                   onChange={(event) => setFormTitle(event.target.value)}
-                  placeholder="Soccer practice"
+                  placeholder={copy.titlePlaceholder}
                   className="mt-1 w-full rounded-md border border-[#cbbba4] bg-[#fffdf8] px-2.5 py-2 text-sm text-[#2f4038] outline-none transition focus:border-[#9e8569] focus:ring-2 focus:ring-[#d9c3a6]"
                   required
                 />
@@ -634,7 +678,7 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
           <div className="space-y-2">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#4e5f56]">
               <Clock3 className="h-4 w-4 text-accent" />
-              Upcoming
+              {copy.upcomingHeading}
             </p>
             {upcomingEvents.length > 0 ? (
               <div className="space-y-2">
@@ -676,7 +720,7 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
               </div>
             ) : (
               <p className="rounded-lg border border-dashed border-[#d4c4ae] bg-[#fff8ef] px-3 py-2 text-sm fc-text-muted">
-                No upcoming events yet.
+                {copy.emptyUpcomingMessage}
               </p>
             )}
           </div>
@@ -684,4 +728,12 @@ export function FamilyCalendar({ initialCustomEvents }: FamilyCalendarProps) {
       </div>
     </article>
   );
+}
+
+type PersonalCalendarProps = {
+  initialCustomEvents: CalendarCustomEvent[];
+};
+
+export function PersonalCalendar({ initialCustomEvents }: PersonalCalendarProps) {
+  return <FamilyCalendar initialCustomEvents={initialCustomEvents} scope="personal" />;
 }

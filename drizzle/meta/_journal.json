@@ -29,6 +29,13 @@
       "when": 1776554797911,
       "tag": "0003_keen_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776609363795,
+      "tag": "0004_smiling_demogoblin",
+      "breakpoints": true
     }
   ]
 }

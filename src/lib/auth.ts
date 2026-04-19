@@ -10,11 +10,29 @@ const authSecret =
   process.env.BETTER_AUTH_SECRET ??
   "family-cloud-dev-secret-change-in-production";
 
+function parseTrustedOrigins(value: string | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(/[,\n]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+const trustedOrigins = Array.from(
+  new Set([
+    baseUrl,
+    ...parseTrustedOrigins(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
+  ]),
+);
+
 export const auth = betterAuth({
   appName: "Family Cloud",
   baseURL: baseUrl,
   secret: authSecret,
-  trustedOrigins: [baseUrl],
+  trustedOrigins,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,

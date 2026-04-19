@@ -1,3 +1,7 @@
+export const calendarEventScopes = ["family", "personal"] as const;
+
+export type CalendarEventScope = (typeof calendarEventScopes)[number];
+
 export const customCalendarEventTypes = [
   "Family",
   "School",
@@ -27,4 +31,8 @@ export function isCustomCalendarEventType(
   value: string,
 ): value is CustomCalendarEventType {
   return customCalendarEventTypes.includes(value as CustomCalendarEventType);
+}
+
+export function isCalendarEventScope(value: string): value is CalendarEventScope {
+  return calendarEventScopes.includes(value as CalendarEventScope);
 }

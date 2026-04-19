@@ -5,6 +5,7 @@ export const calendarEvent = pgTable(
   "calendar_event",
   {
     id: text("id").primaryKey(),
+    scope: text("scope").notNull().default("family"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -19,6 +20,13 @@ export const calendarEvent = pgTable(
       .notNull(),
   },
   (table) => [
+    index("calendar_event_scope_idx").on(table.scope),
+    index("calendar_event_scope_date_idx").on(table.scope, table.date),
+    index("calendar_event_scope_user_date_idx").on(
+      table.scope,
+      table.userId,
+      table.date,
+    ),
     index("calendar_event_user_id_idx").on(table.userId),
     index("calendar_event_user_date_idx").on(table.userId, table.date),
   ],

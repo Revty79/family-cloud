@@ -34,20 +34,23 @@ cp .env.example .env.local
 
 3. Set `DATABASE_URL` to your PostgreSQL instance and set a long `BETTER_AUTH_SECRET`.
 
-4. Generate Better Auth Drizzle schema (already included, re-run when auth config/plugins change):
+4. Set `BETTER_AUTH_URL` to the canonical URL users should access (for example `https://family.example.com`).
+If you also access the app through other hosts (like LAN IP or router-forwarded address), add them to `BETTER_AUTH_TRUSTED_ORIGINS` as a comma-separated list.
+
+5. Generate Better Auth Drizzle schema (already included, re-run when auth config/plugins change):
 
 ```bash
 npm run auth:generate
 ```
 
-5. Create and apply database migrations:
+6. Create and apply database migrations:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 ```
 
-6. Start development server:
+7. Start development server:
 
 ```bash
 npm run dev

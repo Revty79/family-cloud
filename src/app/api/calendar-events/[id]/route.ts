@@ -19,6 +19,24 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const params = await context.params;
   const eventId = params.id;
 
+  const [eventRow] = await db
+    .select({
+      id: calendarEvent.id,
+      scope: calendarEvent.scope,
+      userId: calendarEvent.userId,
+    })
+    .from(calendarEvent)
+    .where(eq(calendarEvent.id, eventId))
+    .limit(1);
+
+  if (!eventRow) {
+    return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  if (eventRow.scope === "personal" && eventRow.userId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const [deleted] = await db
     .delete(calendarEvent)
     .where(eq(calendarEvent.id, eventId))
