@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { ChoreCalendar } from "@/components/dashboard/chore-calendar";
 import { db } from "@/db";
-import { choreAssignment, choreItem } from "@/db/schema";
+import { choreAssignment, choreItem, user } from "@/db/schema";
+import { cleanupExpiredCompletedChoreAssignments } from "@/lib/chore-calendar-server";
+import { requireSession } from "@/lib/auth-session";
 import type { ChoreAssignment, ChoreItem } from "@/lib/chore-calendar";
 
 export default async function ChoreCalendarPage() {
+  const session = await requireSession("/login?next=/calendars/chore");
+
+  await cleanupExpiredCompletedChoreAssignments();
+
   const [choreRows, assignmentRows] = await Promise.all([
     db
       .select({
@@ -20,9 +26,13 @@ export default async function ChoreCalendarPage() {
         id: choreAssignment.id,
         date: choreAssignment.date,
         choreTitle: choreAssignment.choreTitle,
+        assignedByUserId: choreAssignment.assignedByUserId,
+        assignedUserName: user.name,
+        completedAt: choreAssignment.completedAt,
         createdAt: choreAssignment.createdAt,
       })
       .from(choreAssignment)
+      .innerJoin(user, eq(choreAssignment.assignedByUserId, user.id))
       .orderBy(asc(choreAssignment.date), asc(choreAssignment.createdAt)),
   ]);
 
@@ -37,6 +47,9 @@ export default async function ChoreCalendarPage() {
       id: assignment.id,
       date: assignment.date,
       choreTitle: assignment.choreTitle,
+      assignedUserId: assignment.assignedByUserId,
+      assignedUserName: assignment.assignedUserName,
+      completedAt: assignment.completedAt ? assignment.completedAt.toISOString() : null,
       createdAt: assignment.createdAt.toISOString(),
     }),
   );
@@ -62,6 +75,7 @@ export default async function ChoreCalendarPage() {
       </div>
 
       <ChoreCalendar
+        currentUserId={session.user.id}
         initialChores={initialChores}
         initialAssignments={initialAssignments}
       />

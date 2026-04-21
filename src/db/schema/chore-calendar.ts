@@ -30,6 +30,7 @@ export const choreAssignment = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     date: text("date").notNull(),
     choreTitle: text("chore_title").notNull(),
+    completedAt: timestamp("completed_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -37,8 +38,12 @@ export const choreAssignment = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("chore_assignment_date_unique_idx").on(table.date),
+    uniqueIndex("chore_assignment_date_assigned_by_unique_idx").on(
+      table.date,
+      table.assignedByUserId,
+    ),
     index("chore_assignment_assigned_by_user_id_idx").on(table.assignedByUserId),
     index("chore_assignment_date_idx").on(table.date),
+    index("chore_assignment_completed_at_idx").on(table.completedAt),
   ],
 );

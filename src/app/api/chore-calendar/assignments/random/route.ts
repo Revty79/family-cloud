@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { choreAssignment, choreItem } from "@/db/schema";
 import { isCalendarDateKey } from "@/lib/calendar";
 import type { ChoreAssignment } from "@/lib/chore-calendar";
+import { cleanupExpiredCompletedChoreAssignments } from "@/lib/chore-calendar-server";
 import { getSession } from "@/lib/auth-session";
 
 type AssignRandomBody = {
@@ -12,11 +13,15 @@ type AssignRandomBody = {
 
 function toChoreAssignment(
   row: typeof choreAssignment.$inferSelect,
+  assignedUserName: string,
 ): ChoreAssignment {
   return {
     id: row.id,
     date: row.date,
     choreTitle: row.choreTitle,
+    assignedUserId: row.assignedByUserId,
+    assignedUserName,
+    completedAt: row.completedAt ? row.completedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -30,6 +35,8 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  await cleanupExpiredCompletedChoreAssignments();
 
   let payload: AssignRandomBody;
   try {
@@ -71,19 +78,23 @@ export async function POST(request: Request) {
       assignedByUserId: session.user.id,
       date,
       choreTitle: randomChore.title,
+      completedAt: null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
-      target: choreAssignment.date,
+      target: [choreAssignment.date, choreAssignment.assignedByUserId],
       set: {
         choreTitle: randomChore.title,
         assignedByUserId: session.user.id,
+        completedAt: null,
         updatedAt: now,
       },
     })
     .returning();
 
+  const assignedUserName = session.user.name || "Family member";
+
   return NextResponse.json({
-    assignment: toChoreAssignment(saved),
+    assignment: toChoreAssignment(saved, assignedUserName),
   });
 }

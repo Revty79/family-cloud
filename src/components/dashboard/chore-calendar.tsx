@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   ChevronLeft,
@@ -13,8 +13,10 @@ import {
 import { cn } from "@/lib/cn";
 import {
   buildCalendarCells,
+  COMPLETED_CHORE_RETENTION_HOURS,
   formatDateKey,
   isValidChoreTitle,
+  isCompletedChoreExpired,
   normalizeChoreTitle,
   parseDateKey,
   type ChoreAssignment,
@@ -23,6 +25,7 @@ import {
 import { isCalendarDateKey } from "@/lib/calendar";
 
 type ChoreCalendarProps = {
+  currentUserId: string;
   initialChores: ChoreItem[];
   initialAssignments: ChoreAssignment[];
 };
@@ -57,10 +60,30 @@ function sortChoresByTitle(chores: ChoreItem[]) {
 }
 
 function sortAssignmentsByDate(assignments: ChoreAssignment[]) {
-  return [...assignments].sort((a, b) => a.date.localeCompare(b.date));
+  return [...assignments].sort((a, b) => {
+    const byDate = a.date.localeCompare(b.date);
+    if (byDate !== 0) {
+      return byDate;
+    }
+
+    const byAssignee = a.assignedUserName.localeCompare(
+      b.assignedUserName,
+      undefined,
+      { sensitivity: "base" },
+    );
+
+    if (byAssignee !== 0) {
+      return byAssignee;
+    }
+
+    return a.choreTitle.localeCompare(b.choreTitle, undefined, {
+      sensitivity: "base",
+    });
+  });
 }
 
 export function ChoreCalendar({
+  currentUserId,
   initialChores,
   initialAssignments,
 }: ChoreCalendarProps) {
@@ -86,7 +109,22 @@ export function ChoreCalendar({
   const [pendingRemoveAssignmentId, setPendingRemoveAssignmentId] = useState<
     string | null
   >(null);
+  const [pendingCompletionAssignmentId, setPendingCompletionAssignmentId] = useState<
+    string | null
+  >(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const pruneExpired = () => {
+      setAssignments((previous) =>
+        previous.filter((assignment) => !isCompletedChoreExpired(assignment.completedAt)),
+      );
+    };
+
+    pruneExpired();
+    const intervalId = window.setInterval(pruneExpired, 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const visibleMonthYear = visibleMonth.getFullYear();
   const visibleMonthIndex = visibleMonth.getMonth();
@@ -110,6 +148,17 @@ export function ChoreCalendar({
     [],
   );
 
+  const completionDateTimeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    [],
+  );
+
   const selectedDateLabel = useMemo(() => {
     const parsed = parseDateKey(selectedDate);
     return parsed ? fullDateFormatter.format(parsed) : selectedDate;
@@ -120,15 +169,40 @@ export function ChoreCalendar({
     [visibleMonthIndex, visibleMonthYear],
   );
 
-  const assignmentByDate = useMemo(() => {
-    const map = new Map<string, ChoreAssignment>();
+  const assignmentsByDate = useMemo(() => {
+    const map = new Map<string, ChoreAssignment[]>();
     for (const assignment of assignments) {
-      map.set(assignment.date, assignment);
+      const existing = map.get(assignment.date);
+      if (existing) {
+        existing.push(assignment);
+        continue;
+      }
+      map.set(assignment.date, [assignment]);
     }
+
+    for (const dateAssignments of map.values()) {
+      dateAssignments.sort((a, b) =>
+        a.assignedUserName.localeCompare(b.assignedUserName, undefined, {
+          sensitivity: "base",
+        }),
+      );
+    }
+
     return map;
   }, [assignments]);
 
-  const selectedAssignment = assignmentByDate.get(selectedDate) ?? null;
+  const selectedAssignment = useMemo(
+    () =>
+      (assignmentsByDate.get(selectedDate) ?? []).find(
+        (assignment) => assignment.assignedUserId === currentUserId,
+      ) ?? null,
+    [assignmentsByDate, currentUserId, selectedDate],
+  );
+
+  const selectedDateAssignments = useMemo(
+    () => assignmentsByDate.get(selectedDate) ?? [],
+    [assignmentsByDate, selectedDate],
+  );
 
   const selectedMonthAssignments = useMemo(
     () =>
@@ -159,7 +233,11 @@ export function ChoreCalendar({
   const upsertAssignment = (nextAssignment: ChoreAssignment) => {
     setAssignments((previous) => {
       const filtered = previous.filter(
-        (assignment) => assignment.date !== nextAssignment.date,
+        (assignment) =>
+          !(
+            assignment.date === nextAssignment.date &&
+            assignment.assignedUserId === nextAssignment.assignedUserId
+          ),
       );
       return sortAssignmentsByDate([...filtered, nextAssignment]);
     });
@@ -242,6 +320,53 @@ export function ChoreCalendar({
       setActionError("Could not clear that assignment right now.");
     } finally {
       setPendingRemoveAssignmentId(null);
+    }
+  };
+
+  const handleToggleAssignmentCompletion = async (
+    assignment: ChoreAssignment,
+    completed: boolean,
+  ) => {
+    setActionError(null);
+    setPendingCompletionAssignmentId(assignment.id);
+
+    try {
+      const response = await fetch(
+        `/api/chore-calendar/assignments/${assignment.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ completed }),
+        },
+      );
+
+      const payload = await parseJson(response);
+      if (!response.ok) {
+        setActionError(parseApiError(payload));
+        return;
+      }
+
+      const updatedAssignment =
+        payload &&
+        typeof payload === "object" &&
+        "assignment" in payload &&
+        payload.assignment &&
+        typeof payload.assignment === "object"
+          ? (payload.assignment as ChoreAssignment)
+          : null;
+
+      if (!updatedAssignment || typeof updatedAssignment.date !== "string") {
+        setActionError("Assignment was updated, but response was invalid.");
+        return;
+      }
+
+      upsertAssignment(updatedAssignment);
+    } catch {
+      setActionError("Could not update this chore right now.");
+    } finally {
+      setPendingCompletionAssignmentId(null);
     }
   };
 
@@ -330,7 +455,7 @@ export function ChoreCalendar({
             Chore calendar
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-7 fc-text-muted">
-            Pick a day, then assign a random chore from your chore list.
+            Pick a day, then assign yourself a random chore from your chore list.
           </p>
         </div>
 
@@ -384,7 +509,11 @@ export function ChoreCalendar({
                 const dateKey = formatDateKey(
                   new Date(visibleMonthYear, visibleMonthIndex, day),
                 );
-                const assignment = assignmentByDate.get(dateKey);
+                const dateAssignments = assignmentsByDate.get(dateKey) ?? [];
+                const myAssignment =
+                  dateAssignments.find(
+                    (assignment) => assignment.assignedUserId === currentUserId,
+                  ) ?? null;
                 const isToday = dateKey === formatDateKey(today);
                 const isSelected = dateKey === selectedDate;
 
@@ -408,12 +537,16 @@ export function ChoreCalendar({
                     >
                       {day}
                     </p>
-                    {assignment ? (
+                    {myAssignment ? (
                       <p
                         className="mt-2 truncate rounded-md bg-[#e6f2ec] px-1.5 py-1 text-[10px] font-semibold text-[#2c4f42]"
-                        title={assignment.choreTitle}
+                        title={`Your chore: ${myAssignment.choreTitle}`}
                       >
-                        {assignment.choreTitle}
+                        {myAssignment.choreTitle}
+                      </p>
+                    ) : dateAssignments.length > 0 ? (
+                      <p className="mt-2 text-[10px] font-semibold text-[#5f6f68]">
+                        {dateAssignments.length} assigned
                       </p>
                     ) : (
                       <p className="mt-2 text-[10px] font-semibold text-[#7b837e]">
@@ -424,6 +557,70 @@ export function ChoreCalendar({
                 );
               })}
             </div>
+          </div>
+
+          <div className="rounded-lg border border-[#d4c4ae] bg-[#fff8ef] p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#4e5f56]">
+              Daily chore list
+            </p>
+            <p className="mt-1 text-xs fc-text-muted">{selectedDateLabel}</p>
+            {selectedDateAssignments.length > 0 ? (
+              <div className="mt-2 space-y-2">
+                {selectedDateAssignments.map((assignment) => {
+                  const isCompleted = Boolean(assignment.completedAt);
+                  const completedAtLabel = assignment.completedAt
+                    ? completionDateTimeFormatter.format(
+                        new Date(assignment.completedAt),
+                      )
+                    : null;
+
+                  return (
+                    <article
+                      key={assignment.id}
+                      className="rounded-md border border-[#d8c8b2] bg-[#fffdf8] px-2.5 py-2"
+                    >
+                      <label className="flex cursor-pointer items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-[#b8997b] accent-[#6f8f67]"
+                          checked={isCompleted}
+                          onChange={(event) =>
+                            handleToggleAssignmentCompletion(
+                              assignment,
+                              event.target.checked,
+                            )
+                          }
+                          disabled={pendingCompletionAssignmentId === assignment.id}
+                        />
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              "text-sm font-semibold text-[#2e4038]",
+                              isCompleted && "text-[#718078] line-through",
+                            )}
+                          >
+                            {assignment.choreTitle}
+                          </p>
+                          <p className="text-xs fc-text-muted">
+                            {assignment.assignedUserName}
+                            {completedAtLabel ? ` • Completed ${completedAtLabel}` : ""}
+                          </p>
+                          {isCompleted ? (
+                            <p className="text-[11px] text-[#66756e]">
+                              Auto-removes after {COMPLETED_CHORE_RETENTION_HOURS} hours.
+                            </p>
+                          ) : null}
+                        </div>
+                      </label>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-sm fc-text-muted">
+                No chores assigned for this day yet.
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-[#d4c4ae] bg-[#fff8ef] p-3">
@@ -441,7 +638,8 @@ export function ChoreCalendar({
                       {assignment.choreTitle}
                     </p>
                     <p className="text-xs fc-text-muted">
-                      {fullDateFormatter.format(parseDateKey(assignment.date)!)}
+                      {fullDateFormatter.format(parseDateKey(assignment.date)!)} •{" "}
+                      {assignment.assignedUserName}
                     </p>
                   </article>
                 ))}
@@ -475,8 +673,8 @@ export function ChoreCalendar({
 
             <p className="mt-2 text-xs fc-text-muted">
               {selectedAssignment
-                ? `${selectedDateLabel}: ${selectedAssignment.choreTitle}`
-                : `${selectedDateLabel}: no chore assigned`}
+                ? `${selectedDateLabel}: your chore is ${selectedAssignment.choreTitle}`
+                : `${selectedDateLabel}: no chore assigned to you`}
             </p>
 
             <button
@@ -499,7 +697,7 @@ export function ChoreCalendar({
                 <Trash2 className="h-4 w-4" />
                 {pendingRemoveAssignmentId === selectedAssignment.id
                   ? "Clearing..."
-                  : "Clear assignment"}
+                  : "Clear my assignment"}
               </button>
             ) : null}
           </div>
@@ -571,8 +769,8 @@ export function ChoreCalendar({
 
           <p className="inline-flex items-start gap-2 rounded-lg border border-[#d8c8b2] bg-[#fff8ef] px-3 py-2 text-xs leading-6 text-[#5a6a62]">
             <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#7a8a83]" />
-            Random assignment picks from your current chore pool and sets one chore
-            per day.
+            Random assignment picks from your current chore pool and sets your
+            chore for the selected day.
           </p>
         </aside>
       </div>
