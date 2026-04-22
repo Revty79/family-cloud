@@ -103,6 +103,7 @@ export function ShoppingListBoard({ initialItems }: ShoppingListBoardProps) {
   });
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isDeletingPickedUp, setIsDeletingPickedUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const dateTimeFormatter = useMemo(
@@ -240,6 +241,33 @@ export function ShoppingListBoard({ initialItems }: ShoppingListBoardProps) {
     }
   };
 
+  const handleDeletePickedUpItems = async () => {
+    if (pickedUpCount === 0) {
+      return;
+    }
+
+    setError(null);
+    setIsDeletingPickedUp(true);
+
+    try {
+      const response = await fetch("/api/shopping-list/items", {
+        method: "DELETE",
+      });
+
+      const payload = await parseJson(response);
+      if (!response.ok) {
+        setError(parseApiError(payload));
+        return;
+      }
+
+      setItems((previous) => previous.filter((item) => !item.isChecked));
+    } catch {
+      setError("Could not delete picked up items right now.");
+    } finally {
+      setIsDeletingPickedUp(false);
+    }
+  };
+
   return (
     <article className="fc-card rounded-xl border border-[#d6c8b2] p-5 sm:p-6">
       <div>
@@ -263,6 +291,15 @@ export function ShoppingListBoard({ initialItems }: ShoppingListBoardProps) {
         <span className="rounded-full border border-[#d2c3ad] bg-[#f5ead9] px-3 py-1">
           Picked up: {pickedUpCount}
         </span>
+        <button
+          type="button"
+          onClick={handleDeletePickedUpItems}
+          disabled={pickedUpCount === 0 || isDeletingPickedUp}
+          className="inline-flex items-center gap-1 rounded-full border border-[#d2b7a1] bg-[#fff3e8] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#7a4730] transition hover:border-[#bf967a] hover:text-[#5f3422] disabled:opacity-60"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {isDeletingPickedUp ? "Deleting..." : "Delete picked up items"}
+        </button>
       </div>
 
       {error ? (
@@ -324,7 +361,9 @@ export function ShoppingListBoard({ initialItems }: ShoppingListBoardProps) {
                   {bucketItems.map((item) => {
                     const inputId = `shopping-item-${item.id}`;
                     const isBusy =
-                      pendingToggleId === item.id || pendingDeleteId === item.id;
+                      pendingToggleId === item.id ||
+                      pendingDeleteId === item.id ||
+                      isDeletingPickedUp;
 
                     return (
                       <article
@@ -397,7 +436,7 @@ export function ShoppingListBoard({ initialItems }: ShoppingListBoardProps) {
       {pickedUpCount > 0 ? (
         <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#5f6d64]">
           <CheckCircle2 className="h-4 w-4 text-[#5a7a67]" />
-          Checked items stay visible so everyone can see what is already done.
+          Delete picked up items to quickly clear checked entries.
         </p>
       ) : null}
     </article>

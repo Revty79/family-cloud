@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyShoppingItem } from "@/db/schema";
@@ -83,5 +84,21 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     item: toFamilyShoppingItem(created),
+  });
+}
+
+export async function DELETE() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const deleted = await db
+    .delete(familyShoppingItem)
+    .where(eq(familyShoppingItem.isChecked, true))
+    .returning({ id: familyShoppingItem.id });
+
+  return NextResponse.json({
+    deletedCount: deleted.length,
   });
 }
