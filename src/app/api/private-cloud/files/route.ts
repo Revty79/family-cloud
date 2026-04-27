@@ -17,12 +17,19 @@ import {
 } from "@/lib/private-cloud";
 import { ensureUserAccessProfile } from "@/lib/user-access";
 import {
+  doesPrivateCloudStorageContainAnyFilesOnDisk,
+  doesPrivateCloudFileExistOnDisk,
   getPrivateCloudFileDownloadUrl,
   getPrivateCloudFileExtension,
   getPrivateCloudFilesUploadDirectory,
   resolvePrivateCloudFilePath,
   sanitizeOriginalFileName,
 } from "@/lib/private-cloud-file-storage";
+import {
+  StorageConfigurationError,
+  StorageDriftError,
+  assertStorageWriteConfiguration,
+} from "@/lib/storage-safety";
 
 export const runtime = "nodejs";
 
@@ -57,6 +64,14 @@ function parseNumericValue(value: unknown) {
 }
 
 function getUploadFailureMessage(error: unknown) {
+  if (error instanceof StorageConfigurationError) {
+    return error.message;
+  }
+
+  if (error instanceof StorageDriftError) {
+    return error.message;
+  }
+
   if (
     typeof error === "object" &&
     error !== null &&
@@ -67,6 +82,26 @@ function getUploadFailureMessage(error: unknown) {
   }
 
   return "Could not upload this file right now. Please try again in a moment.";
+}
+
+function getUploadFailureStatus(error: unknown) {
+  if (
+    error instanceof StorageConfigurationError ||
+    error instanceof StorageDriftError
+  ) {
+    return 503;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "EACCES" || error.code === "EPERM")
+  ) {
+    return 503;
+  }
+
+  return 500;
 }
 
 async function getPrivateCloudStorageSummaryForUser(
@@ -105,9 +140,18 @@ export async function GET() {
     profile.privateStorageLimitBytes,
   );
 
+  const recentRows = rows.slice(0, 8);
+  const storageWarning =
+    recentRows.length > 0 &&
+    !recentRows.some((row) => doesPrivateCloudFileExistOnDisk(row.storedName)) &&
+    !doesPrivateCloudStorageContainAnyFilesOnDisk()
+      ? "Storage safety warning: Private cloud file records exist in the database, but recent files are missing on disk."
+      : null;
+
   return NextResponse.json({
     files: rows.map(toPrivateCloudFileItem),
     storage,
+    storageWarning,
   });
 }
 
@@ -118,6 +162,27 @@ export async function POST(request: Request) {
   }
 
   try {
+    assertStorageWriteConfiguration();
+
+    const recentRows = await db
+      .select({
+        storedName: privateCloudFile.storedName,
+      })
+      .from(privateCloudFile)
+      .where(eq(privateCloudFile.ownerUserId, session.user.id))
+      .orderBy(desc(privateCloudFile.createdAt))
+      .limit(8);
+
+    if (
+      recentRows.length > 0 &&
+      !recentRows.some((row) => doesPrivateCloudFileExistOnDisk(row.storedName)) &&
+      !doesPrivateCloudStorageContainAnyFilesOnDisk()
+    ) {
+      throw new StorageDriftError(
+        "Storage safety check failed. Database has private cloud files but none of the recent files are on disk. Restore storage before uploading new files.",
+      );
+    }
+
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -256,7 +321,7 @@ export async function POST(request: Request) {
       {
         error: getUploadFailureMessage(error),
       },
-      { status: 500 },
+      { status: getUploadFailureStatus(error) },
     );
   }
 }

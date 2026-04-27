@@ -12,12 +12,19 @@ import {
   type FamilyFileItem,
 } from "@/lib/family-files";
 import {
+  doesFamilyStorageContainAnyFilesOnDisk,
+  doesFamilyFileExistOnDisk,
   getFamilyFileDownloadUrl,
   getFamilyFileExtension,
   getFamilyFilesUploadDirectory,
   resolveFamilyFilePath,
   sanitizeOriginalFileName,
 } from "@/lib/family-file-storage";
+import {
+  StorageConfigurationError,
+  StorageDriftError,
+  assertStorageWriteConfiguration,
+} from "@/lib/storage-safety";
 import { getSession } from "@/lib/auth-session";
 
 export const runtime = "nodejs";
@@ -36,6 +43,14 @@ function toFamilyFileItem(row: typeof familyFile.$inferSelect): FamilyFileItem {
 }
 
 function getUploadFailureMessage(error: unknown) {
+  if (error instanceof StorageConfigurationError) {
+    return error.message;
+  }
+
+  if (error instanceof StorageDriftError) {
+    return error.message;
+  }
+
   if (
     typeof error === "object" &&
     error !== null &&
@@ -46,6 +61,26 @@ function getUploadFailureMessage(error: unknown) {
   }
 
   return "Could not upload this file right now. Please try again in a moment.";
+}
+
+function getUploadFailureStatus(error: unknown) {
+  if (
+    error instanceof StorageConfigurationError ||
+    error instanceof StorageDriftError
+  ) {
+    return 503;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "EACCES" || error.code === "EPERM")
+  ) {
+    return 503;
+  }
+
+  return 500;
 }
 
 export async function GET() {
@@ -59,8 +94,17 @@ export async function GET() {
     .from(familyFile)
     .orderBy(desc(familyFile.createdAt));
 
+  const recentRows = rows.slice(0, 8);
+  const storageWarning =
+    recentRows.length > 0 &&
+    !recentRows.some((row) => doesFamilyFileExistOnDisk(row.storedName)) &&
+    !doesFamilyStorageContainAnyFilesOnDisk()
+      ? "Storage safety warning: Family file records exist in the database, but recent files are missing on disk."
+      : null;
+
   return NextResponse.json({
     files: rows.map(toFamilyFileItem),
+    storageWarning,
   });
 }
 
@@ -71,6 +115,26 @@ export async function POST(request: Request) {
   }
 
   try {
+    assertStorageWriteConfiguration();
+
+    const recentRows = await db
+      .select({
+        storedName: familyFile.storedName,
+      })
+      .from(familyFile)
+      .orderBy(desc(familyFile.createdAt))
+      .limit(8);
+
+    if (
+      recentRows.length > 0 &&
+      !recentRows.some((row) => doesFamilyFileExistOnDisk(row.storedName)) &&
+      !doesFamilyStorageContainAnyFilesOnDisk()
+    ) {
+      throw new StorageDriftError(
+        "Storage safety check failed. Database has family files but none of the recent files are on disk. Restore storage before uploading new files.",
+      );
+    }
+
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -182,7 +246,7 @@ export async function POST(request: Request) {
       {
         error: getUploadFailureMessage(error),
       },
-      { status: 500 },
+      { status: getUploadFailureStatus(error) },
     );
   }
 }

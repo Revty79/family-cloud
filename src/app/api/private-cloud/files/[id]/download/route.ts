@@ -1,10 +1,12 @@
 import { readFile } from "node:fs/promises";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { privateCloudFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
 import {
+  doesPrivateCloudStorageContainAnyFilesOnDisk,
+  doesPrivateCloudFileExistOnDisk,
   resolveExistingPrivateCloudFilePath,
   sanitizeOriginalFileName,
 } from "@/lib/private-cloud-file-storage";
@@ -75,6 +77,29 @@ export async function GET(request: Request, context: RouteContext) {
       },
     });
   } catch {
+    const recentRows = await db
+      .select({
+        storedName: privateCloudFile.storedName,
+      })
+      .from(privateCloudFile)
+      .where(eq(privateCloudFile.ownerUserId, session.user.id))
+      .orderBy(desc(privateCloudFile.createdAt))
+      .limit(8);
+
+    if (
+      recentRows.length > 0 &&
+      !recentRows.some((row) => doesPrivateCloudFileExistOnDisk(row.storedName)) &&
+      !doesPrivateCloudStorageContainAnyFilesOnDisk()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Storage safety warning: Private cloud file records exist, but recent files are missing on disk. Restore storage backup or reattach persistent storage.",
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({ error: "File not found on disk." }, { status: 404 });
   }
 }

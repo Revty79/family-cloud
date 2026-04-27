@@ -1,10 +1,12 @@
 import { readFile } from "node:fs/promises";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
 import {
+  doesFamilyStorageContainAnyFilesOnDisk,
+  doesFamilyFileExistOnDisk,
   resolveExistingFamilyFilePath,
   sanitizeOriginalFileName,
 } from "@/lib/family-file-storage";
@@ -70,6 +72,28 @@ export async function GET(request: Request, context: RouteContext) {
       },
     });
   } catch {
+    const recentRows = await db
+      .select({
+        storedName: familyFile.storedName,
+      })
+      .from(familyFile)
+      .orderBy(desc(familyFile.createdAt))
+      .limit(8);
+
+    if (
+      recentRows.length > 0 &&
+      !recentRows.some((row) => doesFamilyFileExistOnDisk(row.storedName)) &&
+      !doesFamilyStorageContainAnyFilesOnDisk()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Storage safety warning: Family file records exist, but recent files are missing on disk. Restore storage backup or reattach persistent storage.",
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({ error: "File not found on disk." }, { status: 404 });
   }
 }

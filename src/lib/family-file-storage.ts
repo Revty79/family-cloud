@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 const defaultStorageDirectoryName = "storage";
@@ -75,7 +75,7 @@ function resolvePathWithinDirectory(baseDirectory: string, storedName: string) {
   return resolvedPath;
 }
 
-function getFamilyFilesUploadDirectoryCandidates() {
+export function getFamilyFilesUploadDirectoryCandidates() {
   return getStorageRootCandidates().map((rootDirectory) =>
     path.join(rootDirectory, familyFilesDirectoryName),
   );
@@ -131,4 +131,21 @@ export function resolveExistingFamilyFilePath(storedName: string) {
   );
 
   return existingPath ?? primaryPath;
+}
+
+export function doesFamilyFileExistOnDisk(storedName: string) {
+  return resolveFamilyFilePathCandidates(storedName).some((candidatePath) =>
+    existsSync(candidatePath),
+  );
+}
+
+export function doesFamilyStorageContainAnyFilesOnDisk() {
+  return getFamilyFilesUploadDirectoryCandidates().some((directory) => {
+    try {
+      const entries = readdirSync(directory, { withFileTypes: true });
+      return entries.some((entry) => entry.isFile());
+    } catch {
+      return false;
+    }
+  });
 }

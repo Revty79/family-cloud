@@ -79,6 +79,9 @@ Open http://localhost:3000
 - Default location is `./storage` under the app working directory.
 - Docker runtime sets this to `/app/storage`.
 - For custom deployments, set `FAMILY_CLOUD_STORAGE_DIR` to a writable path.
+- `FAMILY_CLOUD_STORAGE_STRICT` defaults to `true` in production and blocks uploads if `FAMILY_CLOUD_STORAGE_DIR` is missing or not absolute.
+- In production, mount `FAMILY_CLOUD_STORAGE_DIR` to persistent storage (for example a Docker volume or host bind mount), not container-local ephemeral storage.
+- Back up this storage path regularly. Database backups alone do not preserve uploaded files.
 
 ## Roles and Admin
 
