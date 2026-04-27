@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { familyFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
-import { resolveFamilyFilePath } from "@/lib/family-file-storage";
+import { resolveFamilyFilePathCandidates } from "@/lib/family-file-storage";
 
 type RouteContext = {
   params: Promise<{
@@ -38,12 +38,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   await db.delete(familyFile).where(eq(familyFile.id, fileId));
 
-  try {
-    const filePath = resolveFamilyFilePath(fileRow.storedName);
-    await unlink(filePath);
-  } catch {
-    // Ignore missing file cleanup errors after DB delete.
-  }
+  const candidatePaths = resolveFamilyFilePathCandidates(fileRow.storedName);
+  await Promise.all(candidatePaths.map((filePath) => unlink(filePath).catch(() => null)));
 
   return NextResponse.json({ success: true });
 }

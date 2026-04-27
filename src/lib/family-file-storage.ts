@@ -1,26 +1,91 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 
-function getFamilyCloudStorageRootDirectory() {
+const defaultStorageDirectoryName = "storage";
+const familyFilesDirectoryName = "family-files";
+
+function toResolvedUniquePaths(values: string[]) {
+  return [...new Set(values.map((value) => path.resolve(value)))];
+}
+
+function getConfiguredStorageRootDirectory() {
   const configuredRoot = process.env.FAMILY_CLOUD_STORAGE_DIR?.trim();
   if (!configuredRoot) {
-    return path.join(
-      /* turbopackIgnore: true */ process.cwd(),
-      "storage",
-    );
+    return null;
   }
 
   if (path.isAbsolute(configuredRoot)) {
-    return configuredRoot;
+    return path.resolve(configuredRoot);
   }
 
-  return path.join(
-    /* turbopackIgnore: true */ process.cwd(),
-    configuredRoot,
+  return path.resolve(
+    path.join(
+      /* turbopackIgnore: true */ process.cwd(),
+      configuredRoot,
+    ),
+  );
+}
+
+function getDefaultStorageRootCandidates() {
+  const currentWorkingDirectory =
+    /* turbopackIgnore: true */ process.cwd();
+
+  return toResolvedUniquePaths([
+    path.join(currentWorkingDirectory, defaultStorageDirectoryName),
+    path.join(
+      currentWorkingDirectory,
+      ".next",
+      "standalone",
+      defaultStorageDirectoryName,
+    ),
+    path.join(currentWorkingDirectory, "..", defaultStorageDirectoryName),
+    path.join(currentWorkingDirectory, "..", "..", defaultStorageDirectoryName),
+  ]);
+}
+
+function getStorageRootCandidates() {
+  const configuredStorageRoot = getConfiguredStorageRootDirectory();
+  if (configuredStorageRoot) {
+    return [configuredStorageRoot];
+  }
+
+  return getDefaultStorageRootCandidates();
+}
+
+function getPrimaryStorageRootForSubdirectory(subdirectoryName: string) {
+  const candidates = getStorageRootCandidates();
+  const existingCandidate = candidates.find((candidate) =>
+    existsSync(path.join(candidate, subdirectoryName)),
+  );
+
+  return existingCandidate ?? candidates[0];
+}
+
+function resolvePathWithinDirectory(baseDirectory: string, storedName: string) {
+  const resolvedBaseDirectory = path.resolve(baseDirectory);
+  const resolvedPath = path.resolve(path.join(resolvedBaseDirectory, storedName));
+
+  if (
+    resolvedPath !== resolvedBaseDirectory &&
+    !resolvedPath.startsWith(`${resolvedBaseDirectory}${path.sep}`)
+  ) {
+    throw new Error("Invalid file path.");
+  }
+
+  return resolvedPath;
+}
+
+function getFamilyFilesUploadDirectoryCandidates() {
+  return getStorageRootCandidates().map((rootDirectory) =>
+    path.join(rootDirectory, familyFilesDirectoryName),
   );
 }
 
 export function getFamilyFilesUploadDirectory() {
-  return path.join(getFamilyCloudStorageRootDirectory(), "family-files");
+  return path.join(
+    getPrimaryStorageRootForSubdirectory(familyFilesDirectoryName),
+    familyFilesDirectoryName,
+  );
 }
 
 export function getFamilyFileDownloadUrl(fileId: string) {
@@ -43,15 +108,27 @@ export function sanitizeOriginalFileName(value: string) {
 }
 
 export function resolveFamilyFilePath(storedName: string) {
-  const baseDirectory = path.resolve(getFamilyFilesUploadDirectory());
-  const resolvedPath = path.resolve(path.join(baseDirectory, storedName));
+  return resolvePathWithinDirectory(getFamilyFilesUploadDirectory(), storedName);
+}
 
-  if (
-    resolvedPath !== baseDirectory &&
-    !resolvedPath.startsWith(`${baseDirectory}${path.sep}`)
-  ) {
-    throw new Error("Invalid file path.");
+export function resolveFamilyFilePathCandidates(storedName: string) {
+  const candidatePaths = getFamilyFilesUploadDirectoryCandidates().map(
+    (candidateDirectory) =>
+      resolvePathWithinDirectory(candidateDirectory, storedName),
+  );
+
+  return toResolvedUniquePaths(candidatePaths);
+}
+
+export function resolveExistingFamilyFilePath(storedName: string) {
+  const [primaryPath, ...fallbackPaths] = resolveFamilyFilePathCandidates(storedName);
+  if (!primaryPath) {
+    throw new Error("No storage path candidates available.");
   }
 
-  return resolvedPath;
+  const existingPath = [primaryPath, ...fallbackPaths].find((candidatePath) =>
+    existsSync(candidatePath),
+  );
+
+  return existingPath ?? primaryPath;
 }

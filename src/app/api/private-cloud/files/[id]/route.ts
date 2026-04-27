@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { privateCloudFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
-import { resolvePrivateCloudFilePath } from "@/lib/private-cloud-file-storage";
+import { resolvePrivateCloudFilePathCandidates } from "@/lib/private-cloud-file-storage";
 
 type RouteContext = {
   params: Promise<{
@@ -50,12 +50,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
       ),
     );
 
-  try {
-    const filePath = resolvePrivateCloudFilePath(fileRow.storedName);
-    await unlink(filePath);
-  } catch {
-    // Ignore missing file cleanup errors after DB delete.
-  }
+  const candidatePaths = resolvePrivateCloudFilePathCandidates(fileRow.storedName);
+  await Promise.all(candidatePaths.map((filePath) => unlink(filePath).catch(() => null)));
 
   return NextResponse.json({ success: true });
 }

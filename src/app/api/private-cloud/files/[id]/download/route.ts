@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { privateCloudFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
 import {
-  resolvePrivateCloudFilePath,
+  resolveExistingPrivateCloudFilePath,
   sanitizeOriginalFileName,
 } from "@/lib/private-cloud-file-storage";
 
@@ -59,7 +59,7 @@ export async function GET(request: Request, context: RouteContext) {
   const asDownload = requestUrl.searchParams.get("download") === "1";
 
   try {
-    const filePath = resolvePrivateCloudFilePath(fileRow.storedName);
+    const filePath = resolveExistingPrivateCloudFilePath(fileRow.storedName);
     const fileBuffer = await readFile(filePath);
 
     return new NextResponse(fileBuffer, {

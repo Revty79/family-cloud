@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { familyFile } from "@/db/schema";
 import { getSession } from "@/lib/auth-session";
 import {
-  resolveFamilyFilePath,
+  resolveExistingFamilyFilePath,
   sanitizeOriginalFileName,
 } from "@/lib/family-file-storage";
 
@@ -54,7 +54,7 @@ export async function GET(request: Request, context: RouteContext) {
   const asDownload = requestUrl.searchParams.get("download") === "1";
 
   try {
-    const filePath = resolveFamilyFilePath(fileRow.storedName);
+    const filePath = resolveExistingFamilyFilePath(fileRow.storedName);
     const fileBuffer = await readFile(filePath);
 
     return new NextResponse(fileBuffer, {
